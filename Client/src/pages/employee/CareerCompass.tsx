@@ -1,10 +1,10 @@
 // Career Compass - AI-Powered Career Path Analysis
 
 import React from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Progress } from '@/components/ui/progress';
-import { Badge } from '@/components/ui/badge';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card';
+import { Button } from '../../components/ui/button';
+import { Progress } from '../../components/ui/progress';
+import { Badge } from '../../components/ui/badge';
 import { 
   Compass, 
   Target, 
