@@ -1,12 +1,12 @@
 // Employee Dashboard with 3D Effects and Gamified Interface
 
 import React from 'react';
-import { useAuth } from '@/contexts/AuthContext';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Progress } from '@/components/ui/progress';
-import { Badge } from '@/components/ui/badge';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { useAuth } from '../../contexts/AuthContext';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card';
+import { Button } from '../../components/ui/button';
+import { Progress } from '../../components/ui/progress';
+import { Badge } from '../../components/ui/badge';
+import { Avatar, AvatarFallback, AvatarImage } from '../../components/ui/avatar';
 import { 
   Target, 
   TrendingUp, 
@@ -19,10 +19,10 @@ import {
   Compass,
   Star
 } from 'lucide-react';
-import { Employee } from '@/types/auth';
+import { Employee } from '../../types/auth';
 
 const EmployeeDashboard: React.FC = () => {
-  const { user } = useAuth() as { user: Employee };
+  const { user } = useAuth() as unknown as { user: Employee };
 
   // Mock recommendations data
   const recommendations = [
