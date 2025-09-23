@@ -4,16 +4,16 @@
 
 import type React from "react"
 import { useState, useMemo } from "react"
-import { useAuth } from "@/contexts/AuthContext"
-import type { CreateEmployeeData } from "@/types/auth"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Progress } from "@/components/ui/progress"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { useAuth } from "../../contexts/AuthContext"
+import type { CreateEmployeeData } from "../../types/auth"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../components/ui/card"
+import { Badge } from "../../components/ui/badge"
+import { Button } from "../../components/ui/button"
+import { Input } from "../../components/ui/input"
+import { Label } from "../../components/ui/label"
+import { Progress } from "../../components/ui/progress"
+import { Avatar, AvatarFallback, AvatarImage } from "../../components/ui/avatar"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../components/ui/table"
 import {
   Dialog,
   DialogContent,
@@ -21,9 +21,9 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { useToast } from "@/hooks/use-toast"
+} from "../../components/ui/dialog"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../components/ui/select"
+import { useToast } from "../../hooks/use-toast"
 import {
   Users,
   Search,
@@ -564,7 +564,7 @@ const EmployeeExplorer: React.FC = () => {
                                 Career Goals
                               </h4>
                               <div className="space-y-2">
-                                {employee.careerGoals.map((goal, idx) => (
+                                {employee.careerGoals.map((goal: string | number | boolean | React.ReactElement<any, string | React.JSXElementConstructor<any>> | Iterable<React.ReactNode> | React.ReactPortal | null | undefined, idx: React.Key | null | undefined) => (
                                   <Badge key={idx} variant="outline" className="mr-2">
                                     {goal}
                                   </Badge>
@@ -581,13 +581,13 @@ const EmployeeExplorer: React.FC = () => {
                                 Skills Assessment
                               </h4>
                               <div className="space-y-3">
-                                {employee.skills.map((skill, idx) => (
+                                {employee.skills.map((skill: { name: string | number | boolean | React.ReactElement<any, string | React.JSXElementConstructor<any>> | Iterable<React.ReactNode> | React.ReactPortal | null | undefined; level: string | number | boolean | React.ReactElement<any, string | React.JSXElementConstructor<any>> | Iterable<React.ReactNode> | null | undefined }, idx: React.Key | null | undefined) => (
                                   <div key={idx} className="space-y-1">
                                     <div className="flex justify-between text-sm">
                                       <span>{skill.name}</span>
                                       <span className="font-semibold">{skill.level}%</span>
                                     </div>
-                                    <Progress value={skill.level} className="h-2" />
+                                    <Progress value={Number(skill.level)} className="h-2" />
                                   </div>
                                 ))}
                               </div>

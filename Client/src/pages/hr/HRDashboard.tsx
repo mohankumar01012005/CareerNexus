@@ -3,11 +3,11 @@
 // HR Dashboard with Executive-Level Analytics and Professional Design
 
 import type React from "react"
-import { useAuth } from "@/contexts/AuthContext"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Progress } from "@/components/ui/progress"
+import { useAuth } from "../../contexts/AuthContext"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../components/ui/card"
+import { Badge } from "../../components/ui/badge"
+import { Button } from "../../components/ui/button"
+import { Progress } from "../../components/ui/progress"
 import {
   Users,
   TrendingUp,
@@ -38,7 +38,7 @@ const HRDashboard: React.FC = () => {
 
   const departmentData = employees.reduce(
     (acc, emp) => {
-      const existing = acc.find((d) => d.name === emp.department)
+      const existing = acc.find((d: { name: any }) => d.name === emp.department)
       if (existing) {
         existing.employees += 1
       } else {
@@ -189,14 +189,14 @@ const HRDashboard: React.FC = () => {
             <CardDescription>Team sizes, open positions, and attrition risk by department</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {departmentData.map((dept, index) => (
+            {departmentData.map((dept: { name: boolean | React.ReactElement<any, string | React.JSXElementConstructor<any>> | Iterable<React.ReactNode> | React.Key | null | undefined; employees: string | number | boolean | React.ReactElement<any, string | React.JSXElementConstructor<any>> | Iterable<React.ReactNode> | React.ReactPortal | null | undefined; openJobs: string | number | boolean | React.ReactElement<any, string | React.JSXElementConstructor<any>> | Iterable<React.ReactNode> | React.ReactPortal | null | undefined; attritionRisk: string | number | boolean | React.ReactElement<any, string | React.JSXElementConstructor<any>> | Iterable<React.ReactNode> | null | undefined }, index: number) => (
               <div
-                key={dept.name}
+                key={typeof dept.name === "string" || typeof dept.name === "number" ? dept.name : `dept-${index}`}
                 className="p-4 glass-card border-border/30 tilt-3d"
                 style={{ animationDelay: `${index * 0.1}s` }}
               >
                 <div className="flex items-center justify-between mb-3">
-                  <h4 className="font-semibold">{dept.name}</h4>
+                  <h4 className="font-semibold">{String(dept.name ?? "")}</h4>
                   <Badge variant="outline" className="text-xs">
                     {dept.employees} employees
                   </Badge>
@@ -208,8 +208,12 @@ const HRDashboard: React.FC = () => {
                   </div>
                   <div>
                     <p className="text-foreground-secondary">At Risk</p>
-                    <p className={`font-semibold ${dept.attritionRisk > 15 ? "text-red-400" : "text-neon-green"}`}>
-                      {dept.attritionRisk}
+                    <p className={`font-semibold ${
+                      typeof dept.attritionRisk === "number" && dept.attritionRisk > 15
+                        ? "text-red-400"
+                        : "text-neon-green"
+                    }`}>
+                      {typeof dept.attritionRisk === "number" ? dept.attritionRisk : "N/A"}
                     </p>
                   </div>
                 </div>
