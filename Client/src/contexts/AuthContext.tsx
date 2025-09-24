@@ -1,6 +1,6 @@
 "use client"
 
-// Authentication Context with Mock Data and State Management
+// Authentication Context with Backend API Integration
 
 import type React from "react"
 import { createContext, useContext, useState, type ReactNode } from "react"
@@ -11,7 +11,7 @@ import type {
   LoginCredentials,
   EmployeeSignupData,
   CreateEmployeeData,
-} from "@/types/auth"
+} from "../types/auth"
 
 interface AuthContextType extends AuthState {
   login: (credentials: LoginCredentials, userType: "employee" | "hr") => Promise<boolean>
@@ -23,14 +23,10 @@ interface AuthContextType extends AuthState {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
-// Mock HR User
-const mockHRUser: HRUser = {
-  id: "hr-1",
-  email: "hr@company.com",
-  name: "Sarah Chen",
-  role: "hr",
-}
+// API Base URL
+const API_BASE_URL = 'http://localhost:5000/api'
 
+// Mock employees for frontend display (will be replaced with API calls later)
 const mockEmployees: Employee[] = [
   {
     id: "emp-1",
@@ -79,106 +75,144 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   })
 
   const login = async (credentials: LoginCredentials, userType: "employee" | "hr"): Promise<boolean> => {
-    // Simulate API call delay
-    await new Promise((resolve) => setTimeout(resolve, 1000))
+    try {
+      const endpoint = userType === "hr" ? "/auth/hr/login" : "/auth/employee/login"
+      
+      const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(credentials),
+      })
 
-    if (userType === "hr") {
-      // HR Login - Fixed credentials
-      if (credentials.email === "hr@company.com" && credentials.password === "admin123") {
-        setAuthState({
-          isAuthenticated: true,
-          userType: "hr",
-          user: mockHRUser,
-        })
+      const data = await response.json()
+
+      if (data.success) {
+        if (userType === "hr") {
+          const hrUser: HRUser = {
+            id: data.user.id,
+            email: data.user.email,
+            name: data.user.profile?.fullName || "HR Manager",
+            role: "hr",
+          }
+          
+          setAuthState({
+            isAuthenticated: true,
+            userType: "hr",
+            user: hrUser,
+          })
+        } else {
+          // Transform backend employee data to frontend format
+          const employee: Employee = {
+            id: data.user.id,
+            email: data.user.email,
+            name: data.user.profile?.fullName || "Employee",
+            currentRole: data.user.profile?.role || "Employee",
+            department: data.user.profile?.department || "General",
+            readinessScore: data.user.profile?.careerReadinessScore || 0,
+            joinDate: data.user.profile?.joiningDate ? new Date(data.user.profile.joiningDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+            phone: data.user.profile?.phoneNumber || "",
+            careerGoals: data.user.profile?.careerGoals?.map((goal: any) => goal.targetRole) || [],
+            skills: data.user.profile?.skills?.map((skill: any, index: number) => ({
+              id: `skill_${index}`,
+              name: skill.name,
+              level: skill.proficiency,
+              category: skill.category,
+              icon: getSkillIcon(skill.category),
+            })) || [],
+          }
+          
+          setAuthState({
+            isAuthenticated: true,
+            userType: "employee",
+            user: employee,
+          })
+        }
         return true
+      } else {
+        console.error('Login failed:', data.message)
+        return false
       }
-      return false
-    } else {
-      const employee = mockEmployees.find(
-        (emp) => emp.email === credentials.email && emp.password === credentials.password,
-      )
-      if (employee) {
-        setAuthState({
-          isAuthenticated: true,
-          userType: "employee",
-          user: employee,
-        })
-        return true
-      }
+    } catch (error) {
+      console.error('Login error:', error)
       return false
     }
   }
 
   const signup = async (data: EmployeeSignupData): Promise<boolean> => {
-    // Simulate API call delay
-    await new Promise((resolve) => setTimeout(resolve, 1000))
-
-    // Check if email already exists
-    const existingEmployee = mockEmployees.find((emp) => emp.email === data.email)
-    if (existingEmployee) {
-      return false
-    }
-
-    // Create new employee (mock)
-    const newEmployee: Employee = {
-      id: `emp-${Date.now()}`,
-      email: data.email,
-      name: data.name,
-      password: data.password,
-      currentRole: "New Employee",
-      department: "Unassigned",
-      readinessScore: 0,
-      joinDate: new Date().toISOString().split("T")[0],
-      careerGoals: [],
-      skills: [],
-    }
-
-    mockEmployees.push(newEmployee)
-
-    setAuthState({
-      isAuthenticated: true,
-      userType: "employee",
-      user: newEmployee,
-    })
-
-    return true
+    // Employee signup is not available - employees are created by HR
+    console.log('Employee signup is not available. Employees are created by HR.')
+    return false
   }
 
   const createEmployee = async (data: CreateEmployeeData): Promise<boolean> => {
-    // Simulate API call delay
-    await new Promise((resolve) => setTimeout(resolve, 1000))
+    try {
+      // Get HR credentials from environment or use default
+      const hrEmail = "hr@company.com"
+      const hrPassword = "admin123"
+      
+      // Create Basic Auth header
+      const credentials = btoa(`${hrEmail}:${hrPassword}`)
+      
+      // Transform frontend data to backend format
+      const backendData = {
+        fullName: data.name,
+        email: data.email,
+        password: data.password,
+        phoneNumber: data.phone || "",
+        department: data.department,
+        role: data.role,
+        joiningDate: data.joinDate,
+        skills: data.skills?.map((skillName: any) => ({
+          name: skillName,
+          proficiency: 50, // Default proficiency
+          category: "Frontend" // Default category
+        })) || []
+      }
 
-    // Check if email already exists
-    const existingEmployee = mockEmployees.find((emp) => emp.email === data.email)
-    if (existingEmployee) {
+      const response = await fetch(`${API_BASE_URL}/auth/employees`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Basic ${credentials}`,
+        },
+        body: JSON.stringify(backendData),
+      })
+
+      const result = await response.json()
+
+      if (result.success) {
+        // Add to mock employees for frontend display
+        const newEmployee: Employee = {
+          id: result.employee.id,
+          email: result.employee.email,
+          name: result.employee.fullName,
+          currentRole: result.employee.role,
+          department: result.employee.department,
+          readinessScore: 0,
+          joinDate: data.joinDate,
+          phone: data.phone || "",
+          careerGoals: [],
+          skills: result.employee.skills?.map((skill: any, index: number) => ({
+            id: `skill_${index}`,
+            name: skill.name,
+            level: skill.proficiency,
+            category: skill.category,
+            icon: getSkillIcon(skill.category),
+          })) || [],
+        }
+        
+        mockEmployees.push(newEmployee)
+        return true
+      } else {
+        console.error('Create employee failed:', result.message)
+        return false
+      }
+    } catch (error) {
+      console.error('Create employee error:', error)
       return false
     }
-
-    // Create new employee
-    const newEmployee: Employee = {
-      id: `emp-${Date.now()}`,
-      email: data.email,
-      name: data.name,
-      password: data.password,
-      currentRole: data.role,
-      department: data.department,
-      readinessScore: 0,
-      joinDate: data.joinDate,
-      phone: data.phone,
-      careerGoals: [],
-      skills: data.skills
-        ? data.skills.map((skill, index) => ({
-            id: `s-${Date.now()}-${index}`,
-            name: skill,
-            level: 50, // Default level
-            category: "General",
-            icon: "🔧",
-          }))
-        : [],
-    }
-
-    mockEmployees.push(newEmployee)
-    return true
   }
 
   const getAllEmployees = (): Employee[] => {
@@ -191,6 +225,21 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       userType: null,
       user: null,
     })
+  }
+
+  // Helper function to get skill icons
+  const getSkillIcon = (category: string): string => {
+    const iconMap: { [key: string]: string } = {
+      'Frontend': '⚛️',
+      'Backend': '🟢',
+      'Leadership': '👑',
+      'Business': '📊',
+      'Design': '🎨',
+      'Data': '📈',
+      'DevOps': '⚙️',
+      'Soft Skills': '🤝',
+    }
+    return iconMap[category] || '🔧'
   }
 
   return (

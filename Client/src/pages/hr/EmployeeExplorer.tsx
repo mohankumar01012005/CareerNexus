@@ -5,7 +5,7 @@
 import type React from "react"
 import { useState, useMemo } from "react"
 import { useAuth } from "../../contexts/AuthContext"
-import type { CreateEmployeeData } from "../../types/auth"
+import type { CreateEmployeeData, Employee } from "../../types/auth"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../components/ui/card"
 import { Badge } from "../../components/ui/badge"
 import { Button } from "../../components/ui/button"
@@ -53,7 +53,7 @@ const EmployeeExplorer: React.FC = () => {
   const [departmentFilter, setDepartmentFilter] = useState("all")
   const [roleFilter, setRoleFilter] = useState("all")
   const [riskFilter, setRiskFilter] = useState("all")
-  const [selectedEmployee, setSelectedEmployee] = useState(null)
+  const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null)
 
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [isCreating, setIsCreating] = useState(false)
@@ -96,7 +96,7 @@ const EmployeeExplorer: React.FC = () => {
       if (success) {
         toast({
           title: "✅ Employee Created Successfully",
-          description: `${createForm.name} has been added to the system and can now log in.`,
+          description: `${createForm.name} has been added to the system and can now log in with their credentials.`,
         })
         setIsCreateModalOpen(false)
         setCreateForm({
@@ -109,18 +109,19 @@ const EmployeeExplorer: React.FC = () => {
           phone: "",
           skills: [],
         })
-        window.location.reload()
+        // Refresh the employee list without full page reload
+        // The mockEmployees array is already updated in the context
       } else {
         toast({
-          title: "Failed to Create Employee",
-          description: "Email already exists or there was an error. Please try again.",
+          title: "❌ Failed to Create Employee",
+          description: "Email already exists or there was a server error. Please try again.",
           variant: "destructive",
         })
       }
     } catch (error) {
       toast({
-        title: "Error",
-        description: "An unexpected error occurred. Please try again.",
+        title: "❌ Connection Error",
+        description: "Could not connect to server. Please check your connection and try again.",
         variant: "destructive",
       })
     } finally {
