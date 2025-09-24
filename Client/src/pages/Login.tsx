@@ -36,19 +36,19 @@ const Login: React.FC = () => {
       const success = await login(loginForm, userType)
       if (success) {
         toast({
-          title: "Login Successful",
+          title: "✅ Login Successful",
           description: `Welcome to SkillCompass ${userType === "hr" ? "HR Portal" : "Employee Dashboard"}`,
         })
       } else {
         toast({
-          title: "Login Failed",
+          title: "❌ Login Failed",
           description: "Invalid credentials. Please check your details and try again.",
           variant: "destructive",
         })
       }
     } catch (error) {
       toast({
-        title: "Login Error",
+        title: "❌ Connection Error",
         description: "An unexpected error occurred. Please try again.",
         variant: "destructive",
       })
