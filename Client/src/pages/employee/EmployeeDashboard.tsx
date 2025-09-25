@@ -1,12 +1,17 @@
 // Employee Dashboard with 3D Effects and Gamified Interface
 
 import React from 'react';
+import { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
 import { Progress } from '../../components/ui/progress';
 import { Badge } from '../../components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '../../components/ui/avatar';
+import { Dialog, DialogContent, DialogTrigger } from '../../components/ui/dialog';
+import ResumeUpload from '../../components/ResumeUpload';
+import AiCareerChat from '../../components/AiCareerChat';
+import { useResume } from '../../hooks/useResume';
 import { 
   Target, 
   TrendingUp, 
@@ -17,12 +22,17 @@ import {
   Upload,
   MessageCircle,
   Compass,
-  Star
+  Star,
+  FileText,
+  ExternalLink
 } from 'lucide-react';
 import { Employee } from '../../types/auth';
 
 const EmployeeDashboard: React.FC = () => {
   const { user } = useAuth() as unknown as { user: Employee };
+  const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const { resumeData, isLoading: resumeLoading } = useResume();
 
   // Mock recommendations data
   const recommendations = [
@@ -49,6 +59,13 @@ const EmployeeDashboard: React.FC = () => {
     }
   ];
 
+  // Open resume in new tab
+  const handleViewResume = () => {
+    if (resumeData?.fileUrl) {
+      window.open(resumeData.fileUrl, '_blank');
+    }
+  };
+
   const getSkillColor = (level: number) => {
     if (level >= 80) return 'text-neon-green';
     if (level >= 60) return 'text-neon-teal';
@@ -65,6 +82,39 @@ const EmployeeDashboard: React.FC = () => {
 
   return (
     <div className="space-y-6 animate-fade-in">
+      {/* Top Right Resume Link */}
+      <div className="flex justify-end mb-4">
+        {resumeData ? (
+          <Button 
+            variant="outline" 
+            onClick={handleViewResume}
+            className="text-blue-500 border-blue-500/30 hover:bg-blue-500/10"
+          >
+            <FileText className="w-4 h-4 mr-2" />
+            My Resume
+            <ExternalLink className="w-3 h-3 ml-2" />
+          </Button>
+        ) : (
+          <Dialog open={isUploadDialogOpen} onOpenChange={setIsUploadDialogOpen}>
+            <DialogTrigger asChild>
+              <Button 
+                variant="outline" 
+                className="text-blue-500 border-blue-500/30 hover:bg-blue-500/10"
+              >
+                <Upload className="w-4 h-4 mr-2" />
+                Upload Resume
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-2xl glass-card">
+              <ResumeUpload 
+                onUploadComplete={() => setIsUploadDialogOpen(false)}
+                currentResume={resumeData?.fileUrl}
+              />
+            </DialogContent>
+          </Dialog>
+        )}
+      </div>
+
       {/* Welcome Section */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Profile Card */}
@@ -93,11 +143,24 @@ const EmployeeDashboard: React.FC = () => {
           <CardContent className="space-y-4">
             {/* Quick Actions */}
             <div className="grid grid-cols-2 gap-3">
-              <Button className="btn-gradient-primary h-12 justify-start">
-                <Upload className="w-4 h-4 mr-2" />
-                Upload Resume
-              </Button>
-              <Button className="glass-button h-12 justify-start">
+              <Dialog open={isUploadDialogOpen} onOpenChange={setIsUploadDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button className="btn-gradient-primary h-12 justify-start">
+                    <Upload className="w-4 h-4 mr-2" />
+                    {resumeData ? 'Update Resume' : 'Upload Resume'}
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-2xl glass-card">
+                  <ResumeUpload 
+                    onUploadComplete={() => setIsUploadDialogOpen(false)}
+                    currentResume={resumeData?.fileUrl}
+                  />
+                </DialogContent>
+              </Dialog>
+              <Button 
+                className="glass-button h-12 justify-start"
+                onClick={() => setIsChatOpen(true)}
+              >
                 <MessageCircle className="w-4 h-4 mr-2" />
                 AI Career Chat
               </Button>
@@ -280,6 +343,14 @@ const EmployeeDashboard: React.FC = () => {
           <div className="text-xs text-foreground-secondary">Achievements</div>
         </Card>
       </div>
+
+      {/* AI Career Chat Modal */}
+      <AiCareerChat
+        isOpen={isChatOpen}
+        onClose={() => setIsChatOpen(false)}
+        resumeData={resumeData}
+        userName={user.name}
+      />
     </div>
   );
 };
