@@ -201,7 +201,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             category: skill.category,
             icon: getSkillIcon(skill.category),
           })) || [],
-          resumeData: null, // Will be loaded separately
         }
         
         mockEmployees.push(newEmployee)
