@@ -13,7 +13,6 @@ export interface Employee {
   joinDate: string
   phone?: string
   password?: string // For HR to set initial password
-  resumeData?: any // Resume data from AI analysis
 }
 
 export interface Skill {
