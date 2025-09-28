@@ -1,3 +1,4 @@
+// src/pages/employee/EmployeeDashboard.tsx
 "use client"
 
 // Employee Dashboard with 3D Effects and Gamified Interface
@@ -9,16 +10,33 @@ import { Button } from "../../components/ui/button"
 import { Progress } from "../../components/ui/progress"
 import { Badge } from "../../components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "../../components/ui/avatar"
-import { Target, TrendingUp, BookOpen, Users, Zap, Award, MessageCircle, Compass, Star } from "lucide-react"
+import { Target, TrendingUp, BookOpen, Users, Zap, Award, MessageCircle, Compass, Star } from 'lucide-react'
 import type { Employee } from "../../types/auth"
 import FileUpload from "../../components/FileUpload"
+import { updateEmployeeResume } from "../../utils/api"
 
 const EmployeeDashboard: React.FC = () => {
-  const { user } = useAuth() as unknown as { user: Employee }
+  const { user, credentials } = useAuth() as unknown as { user: Employee; credentials: { email: string; password: string } | null }
 
-  const handleUploadComplete = (result: any) => {
-    console.log("[v0] File upload completed in dashboard:", result)
-    // You can add additional logic here like updating user profile, showing notifications, etc.
+  const handleUploadComplete = async (result: any) => {
+    try {
+      console.log("[v0] File upload completed in dashboard:", result)
+      // Persist resume link to backend if we have credentials and a public URL
+      if (result?.success && result.publicUrl && credentials?.email && credentials?.password) {
+        const resp = await updateEmployeeResume({
+          email: credentials.email,
+          password: credentials.password,
+          resumeLink: result.publicUrl,
+        })
+        console.log("[v0] Resume link persisted:", resp)
+        // Optionally, you can update local state/UI to reflect the new resume link
+        // e.g., show a toast or update a field in the UI
+      } else {
+        console.warn("[v0] Missing credentials or publicUrl; skipping resume persistence.")
+      }
+    } catch (e) {
+      console.error("[v0] Failed to persist resume link:", e)
+    }
   }
 
   // Mock recommendations data
