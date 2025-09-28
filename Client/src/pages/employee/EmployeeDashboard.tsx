@@ -1,67 +1,64 @@
+"use client"
+
 // Employee Dashboard with 3D Effects and Gamified Interface
 
-import React from 'react';
-import { useAuth } from '../../contexts/AuthContext';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card';
-import { Button } from '../../components/ui/button';
-import { Progress } from '../../components/ui/progress';
-import { Badge } from '../../components/ui/badge';
-import { Avatar, AvatarFallback, AvatarImage } from '../../components/ui/avatar';
-import { 
-  Target, 
-  TrendingUp, 
-  BookOpen, 
-  Users, 
-  Zap, 
-  Award,
-  Upload,
-  MessageCircle,
-  Compass,
-  Star
-} from 'lucide-react';
-import { Employee } from '../../types/auth';
+import type React from "react"
+import { useAuth } from "../../contexts/AuthContext"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../components/ui/card"
+import { Button } from "../../components/ui/button"
+import { Progress } from "../../components/ui/progress"
+import { Badge } from "../../components/ui/badge"
+import { Avatar, AvatarFallback, AvatarImage } from "../../components/ui/avatar"
+import { Target, TrendingUp, BookOpen, Users, Zap, Award, MessageCircle, Compass, Star } from "lucide-react"
+import type { Employee } from "../../types/auth"
+import FileUpload from "../../components/FileUpload"
 
 const EmployeeDashboard: React.FC = () => {
-  const { user } = useAuth() as unknown as { user: Employee };
+  const { user } = useAuth() as unknown as { user: Employee }
+
+  const handleUploadComplete = (result: any) => {
+    console.log("[v0] File upload completed in dashboard:", result)
+    // You can add additional logic here like updating user profile, showing notifications, etc.
+  }
 
   // Mock recommendations data
   const recommendations = [
     {
-      type: 'job',
-      title: 'Senior Product Manager',
+      type: "job",
+      title: "Senior Product Manager",
       match: 78,
-      department: 'Product',
-      icon: '🎯'
+      department: "Product",
+      icon: "🎯",
     },
     {
-      type: 'course',
-      title: 'Advanced Leadership Skills',
+      type: "course",
+      title: "Advanced Leadership Skills",
       match: 92,
-      provider: 'LinkedIn Learning',
-      icon: '👑'
+      provider: "LinkedIn Learning",
+      icon: "👑",
     },
     {
-      type: 'mentor',
-      title: 'Connect with Sarah Kim',
+      type: "mentor",
+      title: "Connect with Sarah Kim",
       match: 85,
-      role: 'VP of Product',
-      icon: '🤝'
-    }
-  ];
+      role: "VP of Product",
+      icon: "🤝",
+    },
+  ]
 
   const getSkillColor = (level: number) => {
-    if (level >= 80) return 'text-neon-green';
-    if (level >= 60) return 'text-neon-teal';
-    if (level >= 40) return 'text-neon-blue';
-    return 'text-neon-orange';
-  };
+    if (level >= 80) return "text-neon-green"
+    if (level >= 60) return "text-neon-teal"
+    if (level >= 40) return "text-neon-blue"
+    return "text-neon-orange"
+  }
 
   const getSkillBackground = (level: number) => {
-    if (level >= 80) return 'from-neon-green/20 to-neon-green/5';
-    if (level >= 60) return 'from-neon-teal/20 to-neon-teal/5';
-    if (level >= 40) return 'from-neon-blue/20 to-neon-blue/5';
-    return 'from-neon-orange/20 to-neon-orange/5';
-  };
+    if (level >= 80) return "from-neon-green/20 to-neon-green/5"
+    if (level >= 60) return "from-neon-teal/20 to-neon-teal/5"
+    if (level >= 40) return "from-neon-blue/20 to-neon-blue/5"
+    return "from-neon-orange/20 to-neon-orange/5"
+  }
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -72,15 +69,16 @@ const EmployeeDashboard: React.FC = () => {
           <CardHeader className="pb-4">
             <div className="flex items-center space-x-4">
               <Avatar className="w-16 h-16 ring-4 ring-primary/20">
-                <AvatarImage src={user.avatar} />
+                <AvatarImage src={user.avatar || "/placeholder.svg"} />
                 <AvatarFallback className="bg-gradient-primary text-white text-xl">
-                  {user.name.split(' ').map(n => n[0]).join('')}
+                  {user.name
+                    .split(" ")
+                    .map((n) => n[0])
+                    .join("")}
                 </AvatarFallback>
               </Avatar>
               <div>
-                <CardTitle className="text-2xl font-space">
-                  Welcome back, {user.name.split(' ')[0]}! 👋
-                </CardTitle>
+                <CardTitle className="text-2xl font-space">Welcome back, {user.name.split(" ")[0]}! 👋</CardTitle>
                 <CardDescription className="text-lg">
                   {user.currentRole} • {user.department}
                 </CardDescription>
@@ -92,11 +90,12 @@ const EmployeeDashboard: React.FC = () => {
           </CardHeader>
           <CardContent className="space-y-4">
             {/* Quick Actions */}
-            <div className="grid grid-cols-2 gap-3">
-              <Button className="btn-gradient-primary h-12 justify-start">
-                <Upload className="w-4 h-4 mr-2" />
-                Upload Resume
-              </Button>
+            <div className="grid grid-cols-1 gap-3">
+              <FileUpload
+                onUploadComplete={handleUploadComplete}
+                acceptedFileTypes=".pdf,.doc,.docx,.txt"
+                maxFileSize={10}
+              />
               <Button className="glass-button h-12 justify-start">
                 <MessageCircle className="w-4 h-4 mr-2" />
                 AI Career Chat
@@ -115,18 +114,14 @@ const EmployeeDashboard: React.FC = () => {
               <div className="absolute inset-0 rounded-full bg-gradient-to-r from-neon-teal to-neon-purple p-1">
                 <div className="w-full h-full rounded-full bg-card flex items-center justify-center">
                   <div className="text-center">
-                    <div className="text-2xl font-bold text-gradient-primary">
-                      {user.readinessScore}%
-                    </div>
+                    <div className="text-2xl font-bold text-gradient-primary">{user.readinessScore}%</div>
                   </div>
                 </div>
               </div>
             </div>
             <div className="text-center">
-              <p className="text-sm text-foreground-secondary">
-                Your promotion readiness score
-              </p>
-              <Button size="sm" variant="outline" className="mt-2">
+              <p className="text-sm text-foreground-secondary">Your promotion readiness score</p>
+              <Button size="sm" variant="outline" className="mt-2 bg-transparent">
                 <Compass className="w-4 h-4 mr-1" />
                 View Path
               </Button>
@@ -142,28 +137,21 @@ const EmployeeDashboard: React.FC = () => {
             <Zap className="w-5 h-5 text-neon-teal" />
             <span>Your Skill Arsenal</span>
           </CardTitle>
-          <CardDescription>
-            Track your expertise across different domains
-          </CardDescription>
+          <CardDescription>Track your expertise across different domains</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
             {user.skills.map((skill, index) => (
-              <div 
-                key={skill.id} 
+              <div
+                key={skill.id}
                 className={`p-4 rounded-xl bg-gradient-to-br ${getSkillBackground(skill.level)} border border-border/50 tilt-3d`}
                 style={{ animationDelay: `${index * 0.1}s` }}
               >
                 <div className="text-center space-y-2">
                   <div className="text-2xl">{skill.icon}</div>
                   <h3 className="font-semibold text-sm">{skill.name}</h3>
-                  <div className={`text-lg font-bold ${getSkillColor(skill.level)}`}>
-                    {skill.level}%
-                  </div>
-                  <Progress 
-                    value={skill.level} 
-                    className="h-2 bg-background/50"
-                  />
+                  <div className={`text-lg font-bold ${getSkillColor(skill.level)}`}>{skill.level}%</div>
+                  <Progress value={skill.level} className="h-2 bg-background/50" />
                   <Badge variant="secondary" className="text-xs">
                     {skill.category}
                   </Badge>
@@ -186,7 +174,7 @@ const EmployeeDashboard: React.FC = () => {
           </CardHeader>
           <CardContent className="space-y-3">
             {user.careerGoals.map((goal, index) => (
-              <div 
+              <div
                 key={index}
                 className="flex items-center justify-between p-3 glass-card border-border/30 tilt-3d"
                 style={{ animationDelay: `${index * 0.1}s` }}
@@ -200,7 +188,7 @@ const EmployeeDashboard: React.FC = () => {
                 </Badge>
               </div>
             ))}
-            <Button variant="outline" className="w-full glass-button">
+            <Button variant="outline" className="w-full glass-button bg-transparent">
               <Target className="w-4 h-4 mr-2" />
               Add New Goal
             </Button>
@@ -214,13 +202,11 @@ const EmployeeDashboard: React.FC = () => {
               <Award className="w-5 h-5 text-neon-orange" />
               <span>AI Recommendations</span>
             </CardTitle>
-            <CardDescription>
-              Personalized opportunities for your growth
-            </CardDescription>
+            <CardDescription>Personalized opportunities for your growth</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             {recommendations.map((rec, index) => (
-              <div 
+              <div
                 key={index}
                 className="p-4 glass-card border-border/30 tilt-3d hover:scale-[1.02] transition-transform cursor-pointer"
                 style={{ animationDelay: `${index * 0.1}s` }}
@@ -231,25 +217,34 @@ const EmployeeDashboard: React.FC = () => {
                     <div>
                       <h4 className="font-semibold text-sm">{rec.title}</h4>
                       <p className="text-xs text-foreground-secondary">
-                        {'department' in rec ? rec.department : 'provider' in rec ? rec.provider : 'role' in rec ? rec.role : ''}
+                        {"department" in rec
+                          ? rec.department
+                          : "provider" in rec
+                            ? rec.provider
+                            : "role" in rec
+                              ? rec.role
+                              : ""}
                       </p>
                     </div>
                   </div>
-                  <Badge variant="outline" className={`text-xs ${rec.match >= 85 ? 'border-neon-green text-neon-green' : 'border-neon-teal text-neon-teal'}`}>
+                  <Badge
+                    variant="outline"
+                    className={`text-xs ${rec.match >= 85 ? "border-neon-green text-neon-green" : "border-neon-teal text-neon-teal"}`}
+                  >
                     {rec.match}% match
                   </Badge>
                 </div>
                 <div className="flex space-x-2">
                   <Button size="sm" className="btn-gradient-primary flex-1">
-                    {rec.type === 'job' ? 'Apply' : rec.type === 'course' ? 'Enroll' : 'Connect'}
+                    {rec.type === "job" ? "Apply" : rec.type === "course" ? "Enroll" : "Connect"}
                   </Button>
-                  <Button size="sm" variant="outline" className="glass-button">
+                  <Button size="sm" variant="outline" className="glass-button bg-transparent">
                     Details
                   </Button>
                 </div>
               </div>
             ))}
-            <Button variant="outline" className="w-full glass-button">
+            <Button variant="outline" className="w-full glass-button bg-transparent">
               <BookOpen className="w-4 h-4 mr-2" />
               View All Recommendations
             </Button>
@@ -281,7 +276,7 @@ const EmployeeDashboard: React.FC = () => {
         </Card>
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default EmployeeDashboard;
+export default EmployeeDashboard
