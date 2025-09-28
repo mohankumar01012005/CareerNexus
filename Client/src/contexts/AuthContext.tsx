@@ -1,3 +1,4 @@
+// src/contexts/AuthContext.tsx
 "use client"
 
 // Authentication Context with Backend API Integration
@@ -19,6 +20,8 @@ interface AuthContextType extends AuthState {
   logout: () => void
   createEmployee: (data: CreateEmployeeData) => Promise<boolean>
   getAllEmployees: () => Employee[]
+  // <CHANGE> expose last used credentials for employee body-auth routes
+  credentials: LoginCredentials | null
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -74,7 +77,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     user: null,
   })
 
-  const login = async (credentials: LoginCredentials, userType: "employee" | "hr"): Promise<boolean> => {
+  // <CHANGE> store last used login credentials for employee body-auth routes
+  const [credentials, setCredentials] = useState<LoginCredentials | null>(null)
+
+  const login = async (creds: LoginCredentials, userType: "employee" | "hr"): Promise<boolean> => {
     try {
       const endpoint = userType === "hr" ? "/auth/hr/login" : "/auth/employee/login"
       
@@ -83,7 +89,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(credentials),
+        body: JSON.stringify(creds),
       })
 
       const data = await response.json()
@@ -102,6 +108,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             userType: "hr",
             user: hrUser,
           })
+          setCredentials(null) // not needed for HR flows
         } else {
           // Transform backend employee data to frontend format
           const employee: Employee = {
@@ -128,6 +135,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             userType: "employee",
             user: employee,
           })
+          // <CHANGE> persist employee credentials for subsequent body-auth requests
+          setCredentials({ email: creds.email, password: creds.password })
         }
         return true
       } else {
@@ -153,7 +162,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const hrPassword = "admin123"
       
       // Create Basic Auth header
-      const credentials = btoa(`${hrEmail}:${hrPassword}`)
+      const basic = btoa(`${hrEmail}:${hrPassword}`)
       
       // Transform frontend data to backend format
       const backendData = {
@@ -175,7 +184,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Basic ${credentials}`,
+          'Authorization': `Basic ${basic}`,
         },
         body: JSON.stringify(backendData),
       })
@@ -225,6 +234,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       userType: null,
       user: null,
     })
+    // <CHANGE> clear stored credentials on logout
+    setCredentials(null)
   }
 
   // Helper function to get skill icons
@@ -251,6 +262,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         logout,
         createEmployee,
         getAllEmployees,
+        // <CHANGE> provide credentials
+        credentials,
       }}
     >
       {children}

@@ -1,3 +1,5 @@
+// src/utils/api.ts
+
 // API Utility Functions
 
 import { API_CONFIG, HR_CREDENTIALS, createBasicAuthHeader, type ApiResponse } from '../config/api'
@@ -83,5 +85,21 @@ export const getEmployeeDashboard = async (authToken?: string) => {
   return apiRequest('/employee/dashboard', {
     method: 'GET',
     headers: authToken ? { 'Authorization': `Bearer ${authToken}` } : {},
+  })
+}
+
+// <CHANGE> add API to persist resume link to backend
+export const updateEmployeeResume = async (params: {
+  email: string
+  password: string
+  resumeLink: string
+}) => {
+  return apiRequest('/employee/resume', {
+    method: 'POST',
+    body: JSON.stringify({
+      email: params.email,
+      password: params.password,
+      resumeLink: params.resumeLink,
+    }),
   })
 }
