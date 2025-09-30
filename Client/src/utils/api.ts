@@ -88,7 +88,7 @@ export const getEmployeeDashboard = async (authToken?: string) => {
   })
 }
 
-// <CHANGE> add API to persist resume link to backend
+// <CHANGE> add API to persist resume link to backend (via apiRequest)
 export const updateEmployeeResume = async (params: {
   email: string
   password: string
@@ -102,4 +102,32 @@ export const updateEmployeeResume = async (params: {
       resumeLink: params.resumeLink,
     }),
   })
+}
+
+// ------------------------------------------------------------------
+// Extra direct fetch-based APIs
+// ------------------------------------------------------------------
+
+export const API_BASE_URL = "http://localhost:5000/api"
+
+type Creds = { email: string; password: string }
+
+export async function updateEmployeeResumeDirect(
+  params: Creds & { resumeLink?: string; publicUrl?: string; resume_data?: any; resumeData?: any },
+) {
+  const resp = await fetch(`${API_BASE_URL}/employee/resume`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(params),
+  })
+  return resp.json()
+}
+
+export async function updateEmployeeResumeData(params: Creds & { resumeData: any }) {
+  const resp = await fetch(`${API_BASE_URL}/employee/resume-data`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(params),
+  })
+  return resp.json()
 }
