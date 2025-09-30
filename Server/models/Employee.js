@@ -90,6 +90,10 @@ const employeeSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+    resume_data: {
+      type: [mongoose.Schema.Types.Mixed],
+      default: [],
+    },
   },
   {
     timestamps: true,

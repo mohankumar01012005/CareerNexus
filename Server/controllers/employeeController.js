@@ -120,7 +120,7 @@ const addCareerGoal = async (req, res) => {
 // Update employee's resume_link field from a provided public URL
 const updateResumeLink = async (req, res) => {
   try {
-    const { resumeLink, resume_link, publicUrl } = req.body
+    const { resumeLink, resume_link, publicUrl, resumeData, resume_data, parsedData } = req.body
     const link = resumeLink || resume_link || publicUrl
 
     if (!link) {
@@ -139,18 +139,67 @@ const updateResumeLink = async (req, res) => {
     }
 
     employee.resume_link = link
+
+    // Optionally accept parsed resume data in the same call (non-breaking)
+    const data = resumeData ?? resume_data ?? parsedData
+    if (data && typeof data === "object" && !Array.isArray(data)) {
+      employee.resume_data.push(data)
+    }
+
     await employee.save()
 
     return res.json({
       success: true,
       message: "Resume link saved successfully",
       resume_link: employee.resume_link,
+      // Include count for visibility when data appended
+      resume_data_count: employee.resume_data?.length || 0,
     })
   } catch (error) {
     console.error("Update resume link error:", error)
     return res.status(500).json({
       success: false,
       message: "Server error while updating resume link",
+    })
+  }
+}
+
+// New controller to append AI-parsed resume data
+const addResumeData = async (req, res) => {
+  try {
+    // Accept multiple naming variants to be robust with client payloads
+    const { resumeData, resume_data, parsedData } = req.body
+    const data = resumeData ?? resume_data ?? parsedData
+
+    if (!data || typeof data !== "object" || Array.isArray(data)) {
+      return res.status(400).json({
+        success: false,
+        message: "resumeData (object) is required",
+      })
+    }
+
+    const employee = await Employee.findOne({ user: req.user._id })
+    if (!employee) {
+      return res.status(404).json({
+        success: false,
+        message: "Employee profile not found",
+      })
+    }
+
+    // Push raw parsed object; allow missing fields without error
+    employee.resume_data.push(data)
+    await employee.save()
+
+    return res.status(201).json({
+      success: true,
+      message: "Resume data saved successfully",
+      count: employee.resume_data.length,
+    })
+  } catch (error) {
+    console.error("Add resume data error:", error)
+    return res.status(500).json({
+      success: false,
+      message: "Server error while saving resume data",
     })
   }
 }
@@ -170,4 +219,6 @@ module.exports = {
   updateSkills,
   addCareerGoal,
   updateResumeLink,
+  // Export new controller
+  addResumeData,
 }

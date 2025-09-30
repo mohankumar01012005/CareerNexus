@@ -14,7 +14,7 @@ import { Target, TrendingUp, BookOpen, Users, Zap, Award, MessageCircle, Compass
 import type { Employee } from "../../types/auth"
 import FileUpload from "../../components/FileUpload"
 import { updateEmployeeResume } from "../../utils/api"
-
+import EmployeeUpload from "../../components/employee-upload"
 const EmployeeDashboard: React.FC = () => {
   const { user, credentials } = useAuth() as unknown as { user: Employee; credentials: { email: string; password: string } | null }
 
@@ -109,7 +109,7 @@ const EmployeeDashboard: React.FC = () => {
           <CardContent className="space-y-4">
             {/* Quick Actions */}
             <div className="grid grid-cols-1 gap-3">
-              <FileUpload
+              <EmployeeUpload
                 onUploadComplete={handleUploadComplete}
                 acceptedFileTypes=".pdf,.doc,.docx,.txt"
                 maxFileSize={10}
