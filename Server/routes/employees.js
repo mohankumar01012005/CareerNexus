@@ -1,6 +1,12 @@
 const express = require("express")
 const { authMiddleware, requireEmployee } = require("../middleware/auth")
-const { getDashboardData, updateSkills, addCareerGoal, updateResumeLink } = require("../controllers/employeeController")
+const {
+  getDashboardData,
+  updateSkills,
+  addCareerGoal,
+  updateResumeLink,
+  addResumeData,
+} = require("../controllers/employeeController")
 
 const router = express.Router()
 
@@ -18,5 +24,8 @@ router.post("/career-goals", addCareerGoal)
 
 // Expects body: { email, password, resumeLink } (or publicUrl / resume_link)
 router.post("/resume", updateResumeLink)
+
+// Expects body: { email, password, resumeData } (or resume_data / parsedData)
+router.post("/resume-data", addResumeData)
 
 module.exports = router

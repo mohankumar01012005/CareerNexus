@@ -258,7 +258,7 @@ EXTRACTION GUIDELINES:
         weaknesses: ["Resume analysis failed - please try uploading again"],
         improvement_suggestions: ["Ensure the file is a valid resume in PDF, DOC, or DOCX format"],
         strengths: [],
-        role_fit: []
+        role_fit: [],
       },
     })
 
