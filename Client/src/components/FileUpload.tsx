@@ -7,17 +7,20 @@ import { Card, CardContent } from "./ui/card"
 import { Upload, FileText, CheckCircle, AlertCircle, Loader2 } from "lucide-react"
 import { uploadFile } from "../lib/supabase"
 import { analyzeResumeFile } from "./../lib/gemini"
+import { updateEmployeeResumeData } from "../utils/api"
 
 interface FileUploadProps {
   onUploadComplete?: (result: any) => void
   acceptedFileTypes?: string
   maxFileSize?: number // in MB
+  authCredentials?: { email: string; password: string } // optional, used to persist parsed data
 }
 
 const FileUpload: React.FC<FileUploadProps> = ({
   onUploadComplete,
   acceptedFileTypes = ".pdf,.doc,.docx,.txt",
   maxFileSize = 10,
+  authCredentials,
 }) => {
   const [isUploading, setIsUploading] = useState(false)
   const [uploadStatus, setUploadStatus] = useState<"idle" | "success" | "error">("idle")
@@ -100,6 +103,37 @@ const FileUpload: React.FC<FileUploadProps> = ({
         url.searchParams.set("resume_ai", encoded)
         window.history.replaceState({}, "", url.toString())
         console.log("[v0] AI analysis result stored in URL parameter 'resume_ai'")
+
+        // Try to persist AI parsed data to backend using either prop credentials or stored ones.
+        try {
+          let creds = authCredentials
+          if (!creds && typeof window !== "undefined") {
+            const lsEmail = window.localStorage.getItem("employeeEmail") || window.localStorage.getItem("authEmail")
+            const lsPassword =
+              window.localStorage.getItem("employeePassword") || window.localStorage.getItem("authPassword")
+            if (lsEmail && lsPassword) {
+              creds = { email: lsEmail, password: lsPassword }
+              console.log("[v0] Using credentials from localStorage for resume-data post.")
+            }
+          }
+
+          if (typeof window !== "undefined" && aiJson && creds?.email && creds?.password) {
+            console.log("[v0] Posting parsed resume data to backend via utils/api.updateEmployeeResumeData...")
+            const json = await updateEmployeeResumeData({
+              email: creds.email,
+              password: creds.password,
+              resumeData: aiJson,
+            })
+            console.log("[v0] Backend resume-data response:", json)
+          } else {
+            console.warn(
+              "[v0] No credentials available for resume-data post. Provide authCredentials prop or store employeeEmail/employeePassword in localStorage.",
+            )
+          }
+        } catch (e) {
+          console.error("[v0] Failed to persist AI resume data:", e)
+        }
+
         console.log("[v0] ===== AI INTEGRATION COMPLETE =====")
       } catch (e: any) {
         console.error("[v0] ===== AI ANALYSIS FAILED =====")
