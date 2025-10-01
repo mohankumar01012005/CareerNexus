@@ -116,6 +116,7 @@ const App: React.FC = () => (
       <AuthProvider>
         <Toaster />
         <Sonner />
+        {/* Only one BrowserRouter at the top level */}
         <BrowserRouter>
           <AppRouter />
         </BrowserRouter>
