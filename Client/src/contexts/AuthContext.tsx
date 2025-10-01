@@ -4,7 +4,7 @@
 // Authentication Context with Backend API Integration
 
 import type React from "react"
-import { createContext, useContext, useState, type ReactNode } from "react"
+import { createContext, useContext, useState, useEffect, type ReactNode } from "react"
 import type {
   AuthState,
   Employee,
@@ -20,14 +20,14 @@ interface AuthContextType extends AuthState {
   logout: () => void
   createEmployee: (data: CreateEmployeeData) => Promise<boolean>
   getAllEmployees: () => Employee[]
-  // <CHANGE> expose last used credentials for employee body-auth routes
+  // expose last used credentials for employee body-auth routes
   credentials: LoginCredentials | null
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 // API Base URL
-const API_BASE_URL = 'http://localhost:5000/api'
+const API_BASE_URL = "http://localhost:5000/api"
 
 // Mock employees for frontend display (will be replaced with API calls later)
 const mockEmployees: Employee[] = [
@@ -77,17 +77,41 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     user: null,
   })
 
-  // <CHANGE> store last used login credentials for employee body-auth routes
+  // store last used login credentials for employee body-auth routes
   const [credentials, setCredentials] = useState<LoginCredentials | null>(null)
+
+  // Load auth state from localStorage on mount
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const storedAuth = localStorage.getItem("authState")
+      const storedCreds = localStorage.getItem("authCredentials")
+      if (storedAuth) {
+        try {
+          const parsed = JSON.parse(storedAuth)
+          setAuthState(parsed)
+        } catch (e) {
+          console.warn("[v0] Failed to parse stored authState:", e)
+        }
+      }
+      if (storedCreds) {
+        try {
+          const parsedCreds = JSON.parse(storedCreds)
+          setCredentials(parsedCreds)
+        } catch (e) {
+          console.warn("[v0] Failed to parse stored credentials:", e)
+        }
+      }
+    }
+  }, [])
 
   const login = async (creds: LoginCredentials, userType: "employee" | "hr"): Promise<boolean> => {
     try {
       const endpoint = userType === "hr" ? "/auth/hr/login" : "/auth/employee/login"
-      
+
       const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify(creds),
       })
@@ -102,13 +126,21 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             name: data.user.profile?.fullName || "HR Manager",
             role: "hr",
           }
-          
+
           setAuthState({
             isAuthenticated: true,
             userType: "hr",
             user: hrUser,
           })
           setCredentials(null) // not needed for HR flows
+
+          // Persist to localStorage
+          localStorage.setItem("authState", JSON.stringify({
+            isAuthenticated: true,
+            userType: "hr",
+            user: hrUser,
+          }))
+          localStorage.removeItem("authCredentials")
         } else {
           // Transform backend employee data to frontend format
           const employee: Employee = {
@@ -118,53 +150,57 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             currentRole: data.user.profile?.role || "Employee",
             department: data.user.profile?.department || "General",
             readinessScore: data.user.profile?.careerReadinessScore || 0,
-            joinDate: data.user.profile?.joiningDate ? new Date(data.user.profile.joiningDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+            joinDate: data.user.profile?.joiningDate
+              ? new Date(data.user.profile.joiningDate).toISOString().split("T")[0]
+              : new Date().toISOString().split("T")[0],
             phone: data.user.profile?.phoneNumber || "",
             careerGoals: data.user.profile?.careerGoals?.map((goal: any) => goal.targetRole) || [],
-            skills: data.user.profile?.skills?.map((skill: any, index: number) => ({
-              id: `skill_${index}`,
-              name: skill.name,
-              level: skill.proficiency,
-              category: skill.category,
-              icon: getSkillIcon(skill.category),
-            })) || [],
+            skills:
+              data.user.profile?.skills?.map((skill: any, index: number) => ({
+                id: `skill_${index}`,
+                name: skill.name,
+                level: skill.proficiency,
+                category: skill.category,
+                icon: getSkillIcon(skill.category),
+              })) || [],
           }
-          
+
           setAuthState({
             isAuthenticated: true,
             userType: "employee",
             user: employee,
           })
-          // <CHANGE> persist employee credentials for subsequent body-auth requests
           setCredentials({ email: creds.email, password: creds.password })
+
+          // Persist to localStorage
+          localStorage.setItem("authState", JSON.stringify({
+            isAuthenticated: true,
+            userType: "employee",
+            user: employee,
+          }))
+          localStorage.setItem("authCredentials", JSON.stringify({ email: creds.email, password: creds.password }))
         }
         return true
       } else {
-        console.error('Login failed:', data.message)
+        console.error("Login failed:", data.message)
         return false
       }
     } catch (error) {
-      console.error('Login error:', error)
+      console.error("Login error:", error)
       return false
     }
   }
 
   const signup = async (data: EmployeeSignupData): Promise<boolean> => {
-    // Employee signup is not available - employees are created by HR
-    console.log('Employee signup is not available. Employees are created by HR.')
+    console.log("Employee signup is not available. Employees are created by HR.")
     return false
   }
 
   const createEmployee = async (data: CreateEmployeeData): Promise<boolean> => {
     try {
-      // Get HR credentials from environment or use default
       const hrEmail = "hr@company.com"
       const hrPassword = "admin123"
-      
-      // Create Basic Auth header
       const basic = btoa(`${hrEmail}:${hrPassword}`)
-      
-      // Transform frontend data to backend format
       const backendData = {
         fullName: data.name,
         email: data.email,
@@ -173,18 +209,19 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         department: data.department,
         role: data.role,
         joiningDate: data.joinDate,
-        skills: data.skills?.map((skillName: any) => ({
-          name: skillName,
-          proficiency: 50, // Default proficiency
-          category: "Frontend" // Default category
-        })) || []
+        skills:
+          data.skills?.map((skillName: any) => ({
+            name: skillName,
+            proficiency: 50,
+            category: "Frontend",
+          })) || [],
       }
 
       const response = await fetch(`${API_BASE_URL}/auth/employees`, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Basic ${basic}`,
+          "Content-Type": "application/json",
+          Authorization: `Basic ${basic}`,
         },
         body: JSON.stringify(backendData),
       })
@@ -192,7 +229,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const result = await response.json()
 
       if (result.success) {
-        // Add to mock employees for frontend display
         const newEmployee: Employee = {
           id: result.employee.id,
           email: result.employee.email,
@@ -203,23 +239,24 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           joinDate: data.joinDate,
           phone: data.phone || "",
           careerGoals: [],
-          skills: result.employee.skills?.map((skill: any, index: number) => ({
-            id: `skill_${index}`,
-            name: skill.name,
-            level: skill.proficiency,
-            category: skill.category,
-            icon: getSkillIcon(skill.category),
-          })) || [],
+          skills:
+            result.employee.skills?.map((skill: any, index: number) => ({
+              id: `skill_${index}`,
+              name: skill.name,
+              level: skill.proficiency,
+              category: skill.category,
+              icon: getSkillIcon(skill.category),
+            })) || [],
         }
-        
+
         mockEmployees.push(newEmployee)
         return true
       } else {
-        console.error('Create employee failed:', result.message)
+        console.error("Create employee failed:", result.message)
         return false
       }
     } catch (error) {
-      console.error('Create employee error:', error)
+      console.error("Create employee error:", error)
       return false
     }
   }
@@ -234,23 +271,27 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       userType: null,
       user: null,
     })
-    // <CHANGE> clear stored credentials on logout
     setCredentials(null)
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("authState")
+      localStorage.removeItem("authCredentials")
+      localStorage.removeItem("employeeEmail")
+      localStorage.removeItem("employeePassword")
+    }
   }
 
-  // Helper function to get skill icons
   const getSkillIcon = (category: string): string => {
     const iconMap: { [key: string]: string } = {
-      'Frontend': '⚛️',
-      'Backend': '🟢',
-      'Leadership': '👑',
-      'Business': '📊',
-      'Design': '🎨',
-      'Data': '📈',
-      'DevOps': '⚙️',
-      'Soft Skills': '🤝',
+      Frontend: "⚛️",
+      Backend: "🟢",
+      Leadership: "👑",
+      Business: "📊",
+      Design: "🎨",
+      Data: "📈",
+      DevOps: "⚙️",
+      "Soft Skills": "🤝",
     }
-    return iconMap[category] || '🔧'
+    return iconMap[category] || "🔧"
   }
 
   return (
@@ -262,7 +303,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         logout,
         createEmployee,
         getAllEmployees,
-        // <CHANGE> provide credentials
         credentials,
       }}
     >

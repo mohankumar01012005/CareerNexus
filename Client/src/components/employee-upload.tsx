@@ -3,10 +3,8 @@
 import { useEffect, useState } from "react"
 import FileUpload from "./FileUpload"
 import { Card, CardContent } from "./ui/card"
-import { Button } from "./ui/button"
-import { Input } from "./ui/input"
-import { Label } from "./ui/label"
 import { updateEmployeeResume } from "../utils/api"
+import { useAuth } from "../contexts/AuthContext"
 
 interface EmployeeUploadProps {
   onUploadComplete?: (result: any) => void
@@ -19,51 +17,37 @@ export default function EmployeeUpload({
   acceptedFileTypes,
   maxFileSize,
 }: EmployeeUploadProps) {
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
-  const [hasCreds, setHasCreds] = useState(false)
+  const { credentials } = useAuth()
   const [linkStatus, setLinkStatus] = useState<"idle" | "saving" | "saved" | "error">("idle")
 
+  // Use credentials from AuthContext / localStorage
+  const [authCredentials, setAuthCredentials] = useState<{ email: string; password: string } | null>(null)
+
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      const lsEmail =
-        window.localStorage.getItem("employeeEmail") ||
-        window.localStorage.getItem("authEmail") ||
-        ""
-      const lsPassword =
-        window.localStorage.getItem("employeePassword") ||
-        window.localStorage.getItem("authPassword") ||
-        ""
-      if (lsEmail && lsPassword) {
-        setEmail(lsEmail)
-        setPassword(lsPassword)
-        setHasCreds(true)
+    if (credentials) {
+      setAuthCredentials(credentials)
+    } else if (typeof window !== "undefined") {
+      const email = window.localStorage.getItem("employeeEmail") || ""
+      const password = window.localStorage.getItem("employeePassword") || ""
+      if (email && password) {
+        setAuthCredentials({ email, password })
       }
     }
-  }, [])
-
-  const saveCreds = () => {
-    if (!email || !password) return
-    window.localStorage.setItem("employeeEmail", email)
-    window.localStorage.setItem("employeePassword", password)
-    setHasCreds(true)
-    console.log("[v0] Saved employee credentials to localStorage")
-  }
+  }, [credentials])
 
   const handleUploadCompleteInternal = async (result: any) => {
     if (!result?.success || !result.publicUrl) return
-    if (!email || !password) return
+    if (!authCredentials?.email || !authCredentials?.password) return
     try {
       setLinkStatus("saving")
       const resp = await updateEmployeeResume({
-        email,
-        password,
+        email: authCredentials.email,
+        password: authCredentials.password,
         resumeLink: result.publicUrl,
       })
       console.log("[v0] updateEmployeeResume response:", resp)
       setLinkStatus("saved")
 
-      // Call external callback if provided
       if (onUploadComplete) {
         await onUploadComplete(result)
       }
@@ -73,38 +57,11 @@ export default function EmployeeUpload({
     }
   }
 
-  if (!hasCreds) {
+  if (!authCredentials) {
     return (
       <Card className="max-w-xl">
-        <CardContent className="p-4 space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="employee-email">Employee Email</Label>
-            <Input
-              id="employee-email"
-              type="email"
-              placeholder="you@example.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              autoComplete="email"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="employee-password">Password</Label>
-            <Input
-              id="employee-password"
-              type="password"
-              placeholder="••••••••"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              autoComplete="current-password"
-            />
-          </div>
-          <Button onClick={saveCreds} className="w-full">
-            Save and Continue
-          </Button>
-          <p className="text-xs text-foreground/70">
-            Your credentials are used to authenticate requests to the employee API (required by the middleware).
-          </p>
+        <CardContent className="p-4 text-center">
+          <p className="text-foreground-secondary">Loading authentication credentials…</p>
         </CardContent>
       </Card>
     )
@@ -113,7 +70,7 @@ export default function EmployeeUpload({
   return (
     <div className="space-y-2">
       <FileUpload
-        authCredentials={{ email, password }}
+        authCredentials={authCredentials}
         onUploadComplete={handleUploadCompleteInternal}
         acceptedFileTypes={acceptedFileTypes}
         maxFileSize={maxFileSize}
