@@ -1,22 +1,25 @@
-// src/pages/employee/EmployeeDashboard.tsx
 "use client"
 
-// Employee Dashboard with 3D Effects and Gamified Interface
-
 import type React from "react"
+import { useState } from "react"
 import { useAuth } from "../../contexts/AuthContext"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../components/ui/card"
 import { Button } from "../../components/ui/button"
 import { Progress } from "../../components/ui/progress"
 import { Badge } from "../../components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "../../components/ui/avatar"
-import { Target, TrendingUp, BookOpen, Users, Zap, Award, MessageCircle, Compass, Star } from 'lucide-react'
+import { Target, TrendingUp, BookOpen, Users, Zap, Award, MessageCircle, Compass, Star } from "lucide-react"
 import type { Employee } from "../../types/auth"
-import FileUpload from "../../components/FileUpload"
 import { updateEmployeeResume } from "../../utils/api"
 import EmployeeUpload from "../../components/employee-upload"
+import AICareerChat from "../../components/ai/ai-career-chat"
+
 const EmployeeDashboard: React.FC = () => {
-  const { user, credentials } = useAuth() as unknown as { user: Employee; credentials: { email: string; password: string } | null }
+  const { user, credentials } = useAuth() as unknown as {
+    user: Employee
+    credentials: { email: string; password: string } | null
+  }
+  const [chatOpen, setChatOpen] = useState(false)
 
   const handleUploadComplete = async (result: any) => {
     try {
@@ -114,7 +117,7 @@ const EmployeeDashboard: React.FC = () => {
                 acceptedFileTypes=".pdf,.doc,.docx,.txt"
                 maxFileSize={10}
               />
-              <Button className="glass-button h-12 justify-start">
+              <Button className="glass-button h-12 justify-start" onClick={() => setChatOpen(true)}>
                 <MessageCircle className="w-4 h-4 mr-2" />
                 AI Career Chat
               </Button>
@@ -293,6 +296,8 @@ const EmployeeDashboard: React.FC = () => {
           <div className="text-xs text-foreground-secondary">Achievements</div>
         </Card>
       </div>
+      {/* Render the AI chat modal */}
+      <AICareerChat open={chatOpen} onOpenChange={setChatOpen} />
     </div>
   )
 }
