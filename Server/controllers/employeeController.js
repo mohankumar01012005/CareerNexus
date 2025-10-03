@@ -204,6 +204,160 @@ const addResumeData = async (req, res) => {
   }
 }
 
+// Get resume link
+const getResumeLink = async (req, res) => {
+  try {
+    const employee = await Employee.findOne({ user: req.user._id })
+    if (!employee) {
+      return res.status(404).json({
+        success: false,
+        message: "Employee profile not found",
+      })
+    }
+
+    return res.json({
+      success: true,
+      resume_link: employee.resume_link || null,
+    })
+  } catch (error) {
+    console.error("Get resume link error:", error)
+    return res.status(500).json({
+      success: false,
+      message: "Server error while fetching resume link",
+    })
+  }
+}
+
+// Get resume data
+const getResumeData = async (req, res) => {
+  try {
+    const employee = await Employee.findOne({ user: req.user._id })
+    if (!employee) {
+      return res.status(404).json({
+        success: false,
+        message: "Employee profile not found",
+      })
+    }
+
+    return res.json({
+      success: true,
+      count: employee.resume_data?.length || 0,
+      resume_data: employee.resume_data || [],
+    })
+  } catch (error) {
+    console.error("Get resume data error:", error)
+    return res.status(500).json({
+      success: false,
+      message: "Server error while fetching resume data",
+    })
+  }
+}
+
+// NEW: Get resume link by email and password
+const getResumeLinkByCredentials = async (req, res) => {
+  try {
+    const { email, password } = req.body
+
+    if (!email || !password) {
+      return res.status(400).json({
+        success: false,
+        message: "Email and password are required",
+      })
+    }
+
+    // Find user by email
+    const user = await User.findOne({ email })
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      })
+    }
+
+    // Verify password
+    const isPasswordValid = await user.comparePassword(password)
+    if (!isPasswordValid) {
+      return res.status(401).json({
+        success: false,
+        message: "Invalid password",
+      })
+    }
+
+    // Find employee by user ID
+    const employee = await Employee.findOne({ user: user._id })
+    if (!employee) {
+      return res.status(404).json({
+        success: false,
+        message: "Employee profile not found",
+      })
+    }
+
+    return res.json({
+      success: true,
+      resume_link: employee.resume_link || null,
+    })
+  } catch (error) {
+    console.error("Get resume link by credentials error:", error)
+    return res.status(500).json({
+      success: false,
+      message: "Server error while fetching resume link",
+    })
+  }
+}
+
+// NEW: Get resume data by email and password
+const getResumeDataByCredentials = async (req, res) => {
+  try {
+    const { email, password } = req.body
+
+    if (!email || !password) {
+      return res.status(400).json({
+        success: false,
+        message: "Email and password are required",
+      })
+    }
+
+    // Find user by email
+    const user = await User.findOne({ email })
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      })
+    }
+
+    // Verify password
+    const isPasswordValid = await user.comparePassword(password)
+    if (!isPasswordValid) {
+      return res.status(401).json({
+        success: false,
+        message: "Invalid password",
+      })
+    }
+
+    // Find employee by user ID
+    const employee = await Employee.findOne({ user: user._id })
+    if (!employee) {
+      return res.status(404).json({
+        success: false,
+        message: "Employee profile not found",
+      })
+    }
+
+    return res.json({
+      success: true,
+      count: employee.resume_data?.length || 0,
+      resume_data: employee.resume_data || [],
+    })
+  } catch (error) {
+    console.error("Get resume data by credentials error:", error)
+    return res.status(500).json({
+      success: false,
+      message: "Server error while fetching resume data",
+    })
+  }
+}
+
 // Helper function to calculate readiness score
 const calculateReadinessScore = (employee) => {
   // Mock calculation based on skills proficiency and career goals
@@ -219,6 +373,9 @@ module.exports = {
   updateSkills,
   addCareerGoal,
   updateResumeLink,
-  // Export new controller
   addResumeData,
+  getResumeLink,
+  getResumeData,
+  getResumeLinkByCredentials,
+  getResumeDataByCredentials,
 }
