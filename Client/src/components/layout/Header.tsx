@@ -1,10 +1,10 @@
 // Futuristic Header Component with Profile and Notifications
 
-import React, { useState } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
-import { Button } from '@/components/ui/button';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Badge } from '@/components/ui/badge';
+import React, { useState, useEffect } from 'react';
+import { useAuth } from '../../contexts/AuthContext';
+import { Button } from '../../components/ui/button';
+import { Avatar, AvatarFallback, AvatarImage } from '../../components/ui/avatar';
+import { Badge } from '../../components/ui/badge';
 import { 
   DropdownMenu,
   DropdownMenuContent,
@@ -12,8 +12,8 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { Bell, Settings, User, LogOut, Menu } from 'lucide-react';
+} from '../../components/ui/dropdown-menu';
+import { Bell, Settings, User, LogOut, Menu, FileText } from 'lucide-react';
 
 interface HeaderProps {
   title: string;
@@ -21,9 +21,64 @@ interface HeaderProps {
   onMenuClick?: () => void;
 }
 
+interface ResumeResponse {
+  success: boolean;
+  resume_link: string;
+}
+
 const Header: React.FC<HeaderProps> = ({ title, subtitle, onMenuClick }) => {
   const { user, userType, logout } = useAuth();
   const [notificationCount] = useState(3); // Mock notification count
+  const [resumeLink, setResumeLink] = useState<string>('');
+  const [isLoadingResume, setIsLoadingResume] = useState<boolean>(false);
+
+  // Fetch resume link on component mount
+  useEffect(() => {
+    const fetchResumeLink = async () => {
+      try {
+        setIsLoadingResume(true);
+        
+        // Get auth credentials from localStorage
+        const authCredentials = localStorage.getItem('authCredentials');
+        
+        if (!authCredentials) {
+          console.error('No auth credentials found in localStorage');
+          return;
+        }
+
+        const credentials = JSON.parse(authCredentials);
+        
+        const response = await fetch('http://localhost:5000/api/employee/get-resume-link', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            email: credentials.email,
+            password: credentials.password
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error(`Failed to fetch resume link: ${response.status}`);
+        }
+
+        const data: ResumeResponse = await response.json();
+        
+        if (data.success && data.resume_link) {
+          setResumeLink(data.resume_link);
+        } else {
+          console.error('No resume link found in response:', data);
+        }
+      } catch (error) {
+        console.error('Error fetching resume link:', error);
+      } finally {
+        setIsLoadingResume(false);
+      }
+    };
+
+    fetchResumeLink();
+  }, []);
 
   const getInitials = (name: string) => {
     return name
@@ -31,6 +86,14 @@ const Header: React.FC<HeaderProps> = ({ title, subtitle, onMenuClick }) => {
       .map(word => word[0])
       .join('')
       .toUpperCase();
+  };
+
+  const handleResumeClick = () => {
+    if (resumeLink) {
+      window.open(resumeLink, '_blank', 'noopener,noreferrer');
+    } else {
+      console.error('No resume link available');
+    }
   };
 
   return (
@@ -60,6 +123,18 @@ const Header: React.FC<HeaderProps> = ({ title, subtitle, onMenuClick }) => {
 
       {/* Right Section */}
       <div className="flex items-center space-x-4 relative z-10">
+        {/* My Resume Button */}
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleResumeClick}
+          disabled={!resumeLink || isLoadingResume}
+          className="glass-card border-glass-border hover:bg-primary/10 hover:border-primary/50 transition-all duration-300"
+        >
+          <FileText className="w-4 h-4 mr-2" />
+          {isLoadingResume ? 'Loading...' : 'My Resume'}
+        </Button>
+
         {/* Notifications */}
         <Button variant="ghost" size="sm" className="relative hover:bg-primary/10">
           <Bell className="w-5 h-5" />
@@ -78,7 +153,7 @@ const Header: React.FC<HeaderProps> = ({ title, subtitle, onMenuClick }) => {
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="relative h-8 w-8 rounded-full">
               <Avatar className="h-8 w-8 ring-2 ring-primary/20">
-                <AvatarImage src={'avatar' in user ? user.avatar : undefined} alt={user?.name} />
+                <AvatarImage src={user && 'avatar' in user ? user.avatar : undefined} alt={user?.name} />
                 <AvatarFallback className="bg-gradient-primary text-white text-xs">
                   {user?.name ? getInitials(user.name) : 'U'}
                 </AvatarFallback>
