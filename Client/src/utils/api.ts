@@ -85,13 +85,13 @@ export const getEmployeeDashboard = async (authToken?: string) => {
   })
 }
 
-// Update Employee Resume API (via apiRequest)
+// Update Employee Resume API (via apiRequest) - USING NEW CREDENTIAL-BASED ENDPOINT
 export const updateEmployeeResume = async (params: {
   email: string
   password: string
   resumeLink: string
 }) => {
-  return apiRequest("/employee/resume", {
+  return apiRequest("/employee/update-resume-link", {
     method: "POST",
     body: JSON.stringify({
       email: params.email,
@@ -145,7 +145,7 @@ type Creds = { email: string; password: string }
 export async function updateEmployeeResumeDirect(
   params: Creds & { resumeLink?: string; publicUrl?: string; resume_data?: any; resumeData?: any },
 ) {
-  const resp = await fetch(`${API_BASE_URL}/employee/resume`, {
+  const resp = await fetch(`${API_BASE_URL}/employee/update-resume-link`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(params),
@@ -154,17 +154,26 @@ export async function updateEmployeeResumeDirect(
 }
 
 export async function updateEmployeeResumeData(params: Creds & { resumeData: any }) {
-  const resp = await fetch(`${API_BASE_URL}/employee/resume-data`, {
+  console.log("[v0][api] updateEmployeeResumeData: Sending request with params:", {
+    email: params.email,
+    hasPassword: !!params.password,
+    resumeDataKeys: Object.keys(params.resumeData || {})
+  })
+
+  const resp = await fetch(`${API_BASE_URL}/employee/update-resume-data`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(params),
   })
-  return resp.json()
+
+  const result = await resp.json()
+  console.log("[v0][api] updateEmployeeResumeData: Response received:", result)
+  return result
 }
 
 // Fetch Employee Resume Parsed Data API for AI Career Chat
 export const getEmployeeResumeParsedData = async (params: { email: string; password: string }) => {
-  const resp = await fetch(`${API_CONFIG.BASE_URL}/employee/get-resume-parsed-data`, {
+  const resp = await fetch(`${API_CONFIG.BASE_URL}/employee/get-resume-data`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(params),
