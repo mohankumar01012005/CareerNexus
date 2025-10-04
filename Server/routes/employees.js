@@ -9,12 +9,14 @@ const {
   getResumeLink,
   getResumeData,
   getResumeLinkByCredentials,
-  getResumeDataByCredentials
+  getResumeDataByCredentials,
+  updateResumeLinkByCredentials,
+  updateResumeDataByCredentials
 } = require("../controllers/employeeController")
 
 const router = express.Router()
 
-// All routes require employee authentication
+// JWT protected routes
 router.use(authMiddleware, requireEmployee)
 
 // Get employee dashboard
@@ -26,22 +28,18 @@ router.put("/skills", updateSkills)
 // Add career goal
 router.post("/career-goals", addCareerGoal)
 
-// Expects body: { email, password, resumeLink } (or publicUrl / resume_link)
+// Resume routes with JWT
 router.post("/resume", updateResumeLink)
-
-// Expects body: { email, password, resumeData } (or resume_data / parsedData)
 router.post("/resume-data", addResumeData)
-
-// Get resume link (existing GET route)
 router.get("/resume", getResumeLink)
-
-// Get resume data (existing GET route)
 router.get("/resume-data", getResumeData)
 
-// NEW: Get resume link by email and password (POST route)
+// Public credential-based routes (no JWT required)
 router.post("/get-resume-link", getResumeLinkByCredentials)
-
-// NEW: Get resume data by email and password (POST route)
 router.post("/get-resume-data", getResumeDataByCredentials)
+
+// NEW: Update routes with credentials (no JWT required)
+router.post("/update-resume-link", updateResumeLinkByCredentials)
+router.post("/update-resume-data", updateResumeDataByCredentials)
 
 module.exports = router

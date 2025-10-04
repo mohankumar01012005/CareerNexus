@@ -143,7 +143,8 @@ const updateResumeLink = async (req, res) => {
     // Optionally accept parsed resume data in the same call (non-breaking)
     const data = resumeData ?? resume_data ?? parsedData
     if (data && typeof data === "object" && !Array.isArray(data)) {
-      employee.resume_data.push(data)
+      // Override resume_data with new data (single object in array)
+      employee.resume_data = [data]
     }
 
     await employee.save()
@@ -152,7 +153,6 @@ const updateResumeLink = async (req, res) => {
       success: true,
       message: "Resume link saved successfully",
       resume_link: employee.resume_link,
-      // Include count for visibility when data appended
       resume_data_count: employee.resume_data?.length || 0,
     })
   } catch (error) {
@@ -164,7 +164,7 @@ const updateResumeLink = async (req, res) => {
   }
 }
 
-// New controller to append AI-parsed resume data
+// Updated controller to override resume data (instead of appending)
 const addResumeData = async (req, res) => {
   try {
     // Accept multiple naming variants to be robust with client payloads
@@ -186,13 +186,13 @@ const addResumeData = async (req, res) => {
       })
     }
 
-    // Push raw parsed object; allow missing fields without error
-    employee.resume_data.push(data)
+    // Override resume_data with new data (single object in array)
+    employee.resume_data = [data]
     await employee.save()
 
     return res.status(201).json({
       success: true,
-      message: "Resume data saved successfully",
+      message: "Resume data overridden successfully",
       count: employee.resume_data.length,
     })
   } catch (error) {
@@ -253,7 +253,7 @@ const getResumeData = async (req, res) => {
   }
 }
 
-// NEW: Get resume link by email and password
+// Get resume link by email and password
 const getResumeLinkByCredentials = async (req, res) => {
   try {
     const { email, password } = req.body
@@ -305,7 +305,7 @@ const getResumeLinkByCredentials = async (req, res) => {
   }
 }
 
-// NEW: Get resume data by email and password
+// Get resume data by email and password
 const getResumeDataByCredentials = async (req, res) => {
   try {
     const { email, password } = req.body
@@ -358,6 +358,144 @@ const getResumeDataByCredentials = async (req, res) => {
   }
 }
 
+// NEW: Update resume link by email and password
+const updateResumeLinkByCredentials = async (req, res) => {
+  try {
+    const { email, password, resumeLink, resume_link, publicUrl, resumeData, resume_data, parsedData } = req.body
+    const link = resumeLink || resume_link || publicUrl
+
+    if (!email || !password) {
+      return res.status(400).json({
+        success: false,
+        message: "Email and password are required",
+      })
+    }
+
+    if (!link) {
+      return res.status(400).json({
+        success: false,
+        message: "resumeLink (or publicUrl/resume_link) is required",
+      })
+    }
+
+    // Find user by email
+    const user = await User.findOne({ email })
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      })
+    }
+
+    // Verify password
+    const isPasswordValid = await user.comparePassword(password)
+    if (!isPasswordValid) {
+      return res.status(401).json({
+        success: false,
+        message: "Invalid password",
+      })
+    }
+
+    // Find employee by user ID
+    const employee = await Employee.findOne({ user: user._id })
+    if (!employee) {
+      return res.status(404).json({
+        success: false,
+        message: "Employee profile not found",
+      })
+    }
+
+    employee.resume_link = link
+
+    // Optionally accept parsed resume data in the same call (non-breaking)
+    const data = resumeData ?? resume_data ?? parsedData
+    if (data && typeof data === "object" && !Array.isArray(data)) {
+      // Override resume_data with new data (single object in array)
+      employee.resume_data = [data]
+    }
+
+    await employee.save()
+
+    return res.json({
+      success: true,
+      message: "Resume link saved successfully",
+      resume_link: employee.resume_link,
+      resume_data_count: employee.resume_data?.length || 0,
+    })
+  } catch (error) {
+    console.error("Update resume link by credentials error:", error)
+    return res.status(500).json({
+      success: false,
+      message: "Server error while updating resume link",
+    })
+  }
+}
+
+// NEW: Update resume data by email and password
+const updateResumeDataByCredentials = async (req, res) => {
+  try {
+    const { email, password, resumeData, resume_data, parsedData } = req.body
+    const data = resumeData ?? resume_data ?? parsedData
+
+    if (!email || !password) {
+      return res.status(400).json({
+        success: false,
+        message: "Email and password are required",
+      })
+    }
+
+    if (!data || typeof data !== "object" || Array.isArray(data)) {
+      return res.status(400).json({
+        success: false,
+        message: "resumeData (object) is required",
+      })
+    }
+
+    // Find user by email
+    const user = await User.findOne({ email })
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      })
+    }
+
+    // Verify password
+    const isPasswordValid = await user.comparePassword(password)
+    if (!isPasswordValid) {
+      return res.status(401).json({
+        success: false,
+        message: "Invalid password",
+      })
+    }
+
+    // Find employee by user ID
+    const employee = await Employee.findOne({ user: user._id })
+    if (!employee) {
+      return res.status(404).json({
+        success: false,
+        message: "Employee profile not found",
+      })
+    }
+
+    // Override resume_data with new data (single object in array)
+    employee.resume_data = [data]
+    await employee.save()
+
+    return res.status(201).json({
+      success: true,
+      message: "Resume data overridden successfully",
+      count: employee.resume_data.length,
+    })
+  } catch (error) {
+    console.error("Update resume data by credentials error:", error)
+    return res.status(500).json({
+      success: false,
+      message: "Server error while saving resume data",
+    })
+  }
+}
+
 // Helper function to calculate readiness score
 const calculateReadinessScore = (employee) => {
   // Mock calculation based on skills proficiency and career goals
@@ -378,4 +516,6 @@ module.exports = {
   getResumeData,
   getResumeLinkByCredentials,
   getResumeDataByCredentials,
+  updateResumeLinkByCredentials,
+  updateResumeDataByCredentials,
 }
