@@ -496,6 +496,206 @@ const updateResumeDataByCredentials = async (req, res) => {
   }
 }
 
+// NEW: Get career goals by email and password
+const getCareerGoalsByCredentials = async (req, res) => {
+  try {
+    const { email, password } = req.body
+
+    if (!email || !password) {
+      return res.status(400).json({
+        success: false,
+        message: "Email and password are required",
+      })
+    }
+
+    // Find user by email
+    const user = await User.findOne({ email })
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      })
+    }
+
+    // Verify password
+    const isPasswordValid = await user.comparePassword(password)
+    if (!isPasswordValid) {
+      return res.status(401).json({
+        success: false,
+        message: "Invalid password",
+      })
+    }
+
+    // Find employee by user ID
+    const employee = await Employee.findOne({ user: user._id })
+    if (!employee) {
+      return res.status(404).json({
+        success: false,
+        message: "Employee profile not found",
+      })
+    }
+
+    return res.json({
+      success: true,
+      careerGoals: employee.careerGoals || [],
+      count: employee.careerGoals?.length || 0,
+    })
+  } catch (error) {
+    console.error("Get career goals by credentials error:", error)
+    return res.status(500).json({
+      success: false,
+      message: "Server error while fetching career goals",
+    })
+  }
+}
+
+// NEW: Add career goal by email and password
+const addCareerGoalByCredentials = async (req, res) => {
+  try {
+    const { email, password, targetRole, priority, targetDate, skillsRequired } = req.body
+
+    if (!email || !password) {
+      return res.status(400).json({
+        success: false,
+        message: "Email and password are required",
+      })
+    }
+
+    if (!targetRole) {
+      return res.status(400).json({
+        success: false,
+        message: "targetRole is required",
+      })
+    }
+
+    // Find user by email
+    const user = await User.findOne({ email })
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      })
+    }
+
+    // Verify password
+    const isPasswordValid = await user.comparePassword(password)
+    if (!isPasswordValid) {
+      return res.status(401).json({
+        success: false,
+        message: "Invalid password",
+      })
+    }
+
+    // Find employee by user ID
+    const employee = await Employee.findOne({ user: user._id })
+    if (!employee) {
+      return res.status(404).json({
+        success: false,
+        message: "Employee profile not found",
+      })
+    }
+
+    const newGoal = {
+      targetRole,
+      priority: priority || "medium",
+      targetDate: targetDate ? new Date(targetDate) : new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // Default 1 year from now
+      skillsRequired: skillsRequired || [],
+      progress: 0,
+      createdAt: new Date()
+    }
+
+    employee.careerGoals.push(newGoal)
+    await employee.save()
+
+    return res.status(201).json({
+      success: true,
+      message: "Career goal added successfully",
+      goal: newGoal,
+      totalGoals: employee.careerGoals.length,
+    })
+  } catch (error) {
+    console.error("Add career goal by credentials error:", error)
+    return res.status(500).json({
+      success: false,
+      message: "Server error while adding career goal",
+    })
+  }
+}
+
+// NEW: Update career goals (replace entire array) by email and password
+const updateCareerGoalsByCredentials = async (req, res) => {
+  try {
+    const { email, password, careerGoals } = req.body
+
+    if (!email || !password) {
+      return res.status(400).json({
+        success: false,
+        message: "Email and password are required",
+      })
+    }
+
+    if (!Array.isArray(careerGoals)) {
+      return res.status(400).json({
+        success: false,
+        message: "careerGoals must be an array",
+      })
+    }
+
+    // Find user by email
+    const user = await User.findOne({ email })
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      })
+    }
+
+    // Verify password
+    const isPasswordValid = await user.comparePassword(password)
+    if (!isPasswordValid) {
+      return res.status(401).json({
+        success: false,
+        message: "Invalid password",
+      })
+    }
+
+    // Find employee by user ID
+    const employee = await Employee.findOne({ user: user._id })
+    if (!employee) {
+      return res.status(404).json({
+        success: false,
+        message: "Employee profile not found",
+      })
+    }
+
+    // Validate and format each goal
+    const formattedGoals = careerGoals.map(goal => ({
+      targetRole: goal.targetRole || "Unknown Role",
+      priority: goal.priority || "medium",
+      targetDate: goal.targetDate ? new Date(goal.targetDate) : new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
+      skillsRequired: goal.skillsRequired || [],
+      progress: goal.progress || 0,
+      createdAt: goal.createdAt ? new Date(goal.createdAt) : new Date()
+    }))
+
+    employee.careerGoals = formattedGoals
+    await employee.save()
+
+    return res.json({
+      success: true,
+      message: "Career goals updated successfully",
+      careerGoals: employee.careerGoals,
+      count: employee.careerGoals.length,
+    })
+  } catch (error) {
+    console.error("Update career goals by credentials error:", error)
+    return res.status(500).json({
+      success: false,
+      message: "Server error while updating career goals",
+    })
+  }
+}
+
 // Helper function to calculate readiness score
 const calculateReadinessScore = (employee) => {
   // Mock calculation based on skills proficiency and career goals
@@ -518,4 +718,7 @@ module.exports = {
   getResumeDataByCredentials,
   updateResumeLinkByCredentials,
   updateResumeDataByCredentials,
+  getCareerGoalsByCredentials,
+  addCareerGoalByCredentials,
+  updateCareerGoalsByCredentials,
 }

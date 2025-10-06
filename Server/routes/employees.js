@@ -11,7 +11,10 @@ const {
   getResumeLinkByCredentials,
   getResumeDataByCredentials,
   updateResumeLinkByCredentials,
-  updateResumeDataByCredentials
+  updateResumeDataByCredentials,
+  getCareerGoalsByCredentials,
+  addCareerGoalByCredentials,
+  updateCareerGoalsByCredentials
 } = require("../controllers/employeeController")
 
 const router = express.Router()
@@ -41,5 +44,10 @@ router.post("/get-resume-data", getResumeDataByCredentials)
 // NEW: Update routes with credentials (no JWT required)
 router.post("/update-resume-link", updateResumeLinkByCredentials)
 router.post("/update-resume-data", updateResumeDataByCredentials)
+
+// NEW: Career goals routes with credentials (no JWT required)
+router.post("/get-career-goals", getCareerGoalsByCredentials)
+router.post("/add-career-goal", addCareerGoalByCredentials)
+router.post("/update-career-goals", updateCareerGoalsByCredentials)
 
 module.exports = router
