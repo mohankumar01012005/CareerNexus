@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useAuth } from "../../contexts/AuthContext"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../components/ui/card"
 import { Button } from "../../components/ui/button"
@@ -10,9 +10,29 @@ import { Badge } from "../../components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "../../components/ui/avatar"
 import { Target, TrendingUp, BookOpen, Users, Zap, Award, MessageCircle, Compass, Star } from "lucide-react"
 import type { Employee } from "../../types/auth"
-import { updateEmployeeResume } from "../../utils/api"
+import { updateEmployeeResume, getEmployeeResumeData } from "../../utils/api"
 import EmployeeUpload from "../../components/employee-upload"
 import AICareerChat from "../../components/ai/ai-career-chat"
+
+interface ResumeSkill {
+  id: string
+  name: string
+  level: number
+  category: string
+  icon: string
+}
+
+interface ResumeData {
+  skills?: {
+    technical: string[]
+    soft: string[]
+    tools: string[]
+    domains: string[]
+  }
+  name?: string
+  email?: string
+  // ... other resume fields
+}
 
 const EmployeeDashboard: React.FC = () => {
   const { user, credentials } = useAuth() as unknown as {
@@ -20,25 +40,96 @@ const EmployeeDashboard: React.FC = () => {
     credentials: { email: string; password: string } | null
   }
   const [chatOpen, setChatOpen] = useState(false)
+  const [resumeSkills, setResumeSkills] = useState<ResumeSkill[]>([])
+  const [isLoadingResume, setIsLoadingResume] = useState(true)
+  const [lastUpdate, setLastUpdate] = useState<number>(Date.now())
+
+  // Fetch resume data and extract technical skills
+  const fetchResumeSkills = async () => {
+    if (!credentials?.email || !credentials?.password) {
+      console.log("No credentials available for fetching resume data")
+      setIsLoadingResume(false)
+      return
+    }
+
+    try {
+      console.log("Fetching resume data for skills...")
+      const response = await getEmployeeResumeData({
+        email: credentials.email,
+        password: credentials.password,
+      })
+
+      console.log("Resume data for skills:", response)
+
+      if (response.success && response.resume_data && response.resume_data.length > 0) {
+        const latestResume = response.resume_data[0] as ResumeData
+        
+        if (latestResume.skills?.technical && latestResume.skills.technical.length > 0) {
+          // Convert technical skills string array to ResumeSkill format
+          const technicalSkills: ResumeSkill[] = latestResume.skills.technical.map((skill, index) => ({
+            id: `resume_skill_${index}`,
+            name: skill,
+            level: 70, // Default proficiency level for resume skills
+            category: "Technical",
+            icon: getSkillIcon(skill),
+          }))
+          
+          setResumeSkills(technicalSkills)
+          console.log(`Loaded ${technicalSkills.length} technical skills from resume`)
+        } else {
+          console.log("No technical skills found in resume data")
+          setResumeSkills([])
+        }
+      } else {
+        console.log("No resume data available")
+        setResumeSkills([])
+      }
+    } catch (error) {
+      console.error("Failed to fetch resume data for skills:", error)
+      setResumeSkills([])
+    } finally {
+      setIsLoadingResume(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchResumeSkills()
+  }, [credentials, lastUpdate])
+
+  // Helper function to get appropriate icons for skills
+  const getSkillIcon = (skillName: string): string => {
+    const skill = skillName.toLowerCase()
+    
+    if (skill.includes('react') || skill.includes('angular') || skill.includes('vue')) return "⚛️"
+    if (skill.includes('node') || skill.includes('express')) return "🟢"
+    if (skill.includes('python')) return "🐍"
+    if (skill.includes('java')) return "☕"
+    if (skill.includes('javascript')) return "📜"
+    if (skill.includes('typescript')) return "🔷"
+    if (skill.includes('sql') || skill.includes('database')) return "🗄️"
+    if (skill.includes('aws') || skill.includes('azure') || skill.includes('cloud')) return "☁️"
+    if (skill.includes('docker') || skill.includes('kubernetes')) return "🐳"
+    if (skill.includes('git')) return "📚"
+    if (skill.includes('html')) return "🌐"
+    if (skill.includes('css')) return "🎨"
+    if (skill.includes('ai') || skill.includes('ml') || skill.includes('machine learning')) return "🤖"
+    
+    return "⚙️" // Default icon for technical skills
+  }
 
   const handleUploadComplete = async (result: any) => {
     try {
       console.log("[v0] File upload completed in dashboard:", result)
-      // Persist resume link to backend if we have credentials and a public URL
-      if (result?.success && result.publicUrl && credentials?.email && credentials?.password) {
-        const resp = await updateEmployeeResume({
-          email: credentials.email,
-          password: credentials.password,
-          resumeLink: result.publicUrl,
-        })
-        console.log("[v0] Resume link persisted:", resp)
-        // Optionally, you can update local state/UI to reflect the new resume link
-        // e.g., show a toast or update a field in the UI
-      } else {
-        console.warn("[v0] Missing credentials or publicUrl; skipping resume persistence.")
+      
+      // Trigger refresh of resume skills after upload
+      setLastUpdate(Date.now())
+      
+      // Show success message or handle as needed
+      if (result?.success) {
+        console.log("[v0] Upload completed successfully, skills will refresh automatically")
       }
     } catch (e) {
-      console.error("[v0] Failed to persist resume link:", e)
+      console.error("[v0] Error handling upload completion:", e)
     }
   }
 
@@ -81,15 +172,19 @@ const EmployeeDashboard: React.FC = () => {
     return "from-neon-orange/20 to-neon-orange/5"
   }
 
+  // Determine which skills to display - prioritize resume skills, fallback to user skills
+  const displaySkills = resumeSkills.length > 0 ? resumeSkills : user.skills
+  const skillsSource = resumeSkills.length > 0 ? "resume" : "profile"
+
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-6 animate-fade-in w-full max-w-full overflow-x-hidden">
       {/* Welcome Section */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Profile Card */}
         <Card className="glass-card tilt-3d lg:col-span-2">
           <CardHeader className="pb-4">
             <div className="flex items-center space-x-4">
-              <Avatar className="w-16 h-16 ring-4 ring-primary/20">
+              <Avatar className="w-16 h-16 ring-4 ring-primary/20 flex-shrink-0">
                 <AvatarImage src={user.avatar || "/placeholder.svg"} />
                 <AvatarFallback className="bg-gradient-primary text-white text-xl">
                   {user.name
@@ -98,14 +193,21 @@ const EmployeeDashboard: React.FC = () => {
                     .join("")}
                 </AvatarFallback>
               </Avatar>
-              <div>
-                <CardTitle className="text-2xl font-space">Welcome back, {user.name.split(" ")[0]}! 👋</CardTitle>
-                <CardDescription className="text-lg">
+              <div className="min-w-0 flex-1">
+                <CardTitle className="text-2xl font-space truncate">Welcome back, {user.name.split(" ")[0]}! 👋</CardTitle>
+                <CardDescription className="text-lg truncate">
                   {user.currentRole} • {user.department}
                 </CardDescription>
-                <Badge variant="outline" className="mt-2">
-                  Member since {new Date(user.joinDate).getFullYear()}
-                </Badge>
+                <div className="flex items-center mt-2 space-x-2 flex-wrap">
+                  <Badge variant="outline">
+                    Member since {new Date(user.joinDate).getFullYear()}
+                  </Badge>
+                  {resumeSkills.length > 0 && (
+                    <Badge className="bg-neon-teal/20 text-neon-teal border-neon-teal/30">
+                      Resume Skills Loaded
+                    </Badge>
+                  )}
+                </div>
               </div>
             </div>
           </CardHeader>
@@ -152,34 +254,72 @@ const EmployeeDashboard: React.FC = () => {
       </div>
 
       {/* Skills Overview */}
-      <Card className="glass-card">
+      <Card className="glass-card overflow-hidden">
         <CardHeader>
-          <CardTitle className="flex items-center space-x-2">
-            <Zap className="w-5 h-5 text-neon-teal" />
-            <span>Your Skill Arsenal</span>
+          <CardTitle className="flex items-center justify-between flex-wrap gap-2">
+            <div className="flex items-center space-x-2">
+              <Zap className="w-5 h-5 text-neon-teal flex-shrink-0" />
+              <span>Your Skill Arsenal</span>
+            </div>
+            {skillsSource === "resume" && (
+              <Badge variant="outline" className="text-xs bg-neon-teal/10 text-neon-teal border-neon-teal/20">
+                From Resume
+              </Badge>
+            )}
+            {skillsSource === "profile" && (
+              <Badge variant="outline" className="text-xs bg-neon-blue/10 text-neon-blue border-neon-blue/20">
+                From Profile
+              </Badge>
+            )}
           </CardTitle>
-          <CardDescription>Track your expertise across different domains</CardDescription>
+          <CardDescription>
+            {skillsSource === "resume" 
+              ? "Technical skills extracted from your resume" 
+              : "Track your expertise across different domains"}
+          </CardDescription>
         </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-            {user.skills.map((skill, index) => (
-              <div
-                key={skill.id}
-                className={`p-4 rounded-xl bg-gradient-to-br ${getSkillBackground(skill.level)} border border-border/50 tilt-3d`}
-                style={{ animationDelay: `${index * 0.1}s` }}
-              >
-                <div className="text-center space-y-2">
-                  <div className="text-2xl">{skill.icon}</div>
-                  <h3 className="font-semibold text-sm">{skill.name}</h3>
-                  <div className={`text-lg font-bold ${getSkillColor(skill.level)}`}>{skill.level}%</div>
-                  <Progress value={skill.level} className="h-2 bg-background/50" />
-                  <Badge variant="secondary" className="text-xs">
-                    {skill.category}
-                  </Badge>
+        <CardContent className="p-6">
+          {isLoadingResume ? (
+            <div className="text-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-neon-teal mx-auto"></div>
+              <p className="text-foreground-secondary mt-2">Loading skills from resume...</p>
+            </div>
+          ) : displaySkills.length === 0 ? (
+            <div className="text-center py-8 glass-card border-border/30">
+              <Zap className="w-12 h-12 text-foreground-secondary mx-auto mb-4" />
+              <h3 className="text-lg font-semibold mb-2">No Skills Found</h3>
+              <p className="text-foreground-secondary mb-4">
+                {credentials ? 
+                  "Upload your resume to automatically extract technical skills, or add skills manually." :
+                  "Please log in to view your skills."
+                }
+              </p>
+              <Button className="glass-button">
+                <Zap className="w-4 h-4 mr-2" />
+                Add Your First Skill
+              </Button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+              {displaySkills.map((skill, index) => (
+                <div
+                  key={skill.id}
+                  className={`p-4 rounded-xl bg-gradient-to-br ${getSkillBackground(skill.level)} border border-border/50 tilt-3d`}
+                  style={{ animationDelay: `${index * 0.1}s` }}
+                >
+                  <div className="text-center space-y-2">
+                    <div className="text-2xl">{skill.icon}</div>
+                    <h3 className="font-semibold text-sm truncate" title={skill.name}>{skill.name}</h3>
+                    <div className={`text-lg font-bold ${getSkillColor(skill.level)}`}>{skill.level}%</div>
+                    <Progress value={skill.level} className="h-2 bg-background/50" />
+                    <Badge variant="secondary" className="text-xs">
+                      {skill.category}
+                    </Badge>
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -189,7 +329,7 @@ const EmployeeDashboard: React.FC = () => {
         <Card className="glass-card">
           <CardHeader>
             <CardTitle className="flex items-center space-x-2">
-              <Target className="w-5 h-5 text-neon-purple" />
+              <Target className="w-5 h-5 text-neon-purple flex-shrink-0" />
               <span>Career Aspirations</span>
             </CardTitle>
           </CardHeader>
@@ -200,11 +340,11 @@ const EmployeeDashboard: React.FC = () => {
                 className="flex items-center justify-between p-3 glass-card border-border/30 tilt-3d"
                 style={{ animationDelay: `${index * 0.1}s` }}
               >
-                <div className="flex items-center space-x-3">
-                  <Star className="w-4 h-4 text-neon-teal" />
-                  <span className="font-medium">{goal}</span>
+                <div className="flex items-center space-x-3 min-w-0 flex-1">
+                  <Star className="w-4 h-4 text-neon-teal flex-shrink-0" />
+                  <span className="font-medium truncate">{goal}</span>
                 </div>
-                <Badge variant="outline" className="text-xs">
+                <Badge variant="outline" className="text-xs flex-shrink-0 ml-2">
                   Target
                 </Badge>
               </div>
@@ -220,7 +360,7 @@ const EmployeeDashboard: React.FC = () => {
         <Card className="glass-card">
           <CardHeader>
             <CardTitle className="flex items-center space-x-2">
-              <Award className="w-5 h-5 text-neon-orange" />
+              <Award className="w-5 h-5 text-neon-orange flex-shrink-0" />
               <span>AI Recommendations</span>
             </CardTitle>
             <CardDescription>Personalized opportunities for your growth</CardDescription>
@@ -232,12 +372,12 @@ const EmployeeDashboard: React.FC = () => {
                 className="p-4 glass-card border-border/30 tilt-3d hover:scale-[1.02] transition-transform cursor-pointer"
                 style={{ animationDelay: `${index * 0.1}s` }}
               >
-                <div className="flex items-start justify-between mb-2">
-                  <div className="flex items-center space-x-2">
-                    <span className="text-lg">{rec.icon}</span>
-                    <div>
-                      <h4 className="font-semibold text-sm">{rec.title}</h4>
-                      <p className="text-xs text-foreground-secondary">
+                <div className="flex items-start justify-between mb-2 gap-2">
+                  <div className="flex items-center space-x-2 min-w-0 flex-1">
+                    <span className="text-lg flex-shrink-0">{rec.icon}</span>
+                    <div className="min-w-0 flex-1">
+                      <h4 className="font-semibold text-sm truncate">{rec.title}</h4>
+                      <p className="text-xs text-foreground-secondary truncate">
                         {"department" in rec
                           ? rec.department
                           : "provider" in rec
@@ -250,7 +390,7 @@ const EmployeeDashboard: React.FC = () => {
                   </div>
                   <Badge
                     variant="outline"
-                    className={`text-xs ${rec.match >= 85 ? "border-neon-green text-neon-green" : "border-neon-teal text-neon-teal"}`}
+                    className={`text-xs flex-shrink-0 ${rec.match >= 85 ? "border-neon-green text-neon-green" : "border-neon-teal text-neon-teal"}`}
                   >
                     {rec.match}% match
                   </Badge>
@@ -277,7 +417,7 @@ const EmployeeDashboard: React.FC = () => {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <Card className="glass-card text-center p-4 tilt-3d">
           <TrendingUp className="w-8 h-8 text-neon-teal mx-auto mb-2" />
-          <div className="text-xl font-bold text-gradient-primary">24</div>
+          <div className="text-xl font-bold text-gradient-primary">{displaySkills.length}</div>
           <div className="text-xs text-foreground-secondary">Skills Tracked</div>
         </Card>
         <Card className="glass-card text-center p-4 tilt-3d">
@@ -296,6 +436,7 @@ const EmployeeDashboard: React.FC = () => {
           <div className="text-xs text-foreground-secondary">Achievements</div>
         </Card>
       </div>
+      
       {/* Render the AI chat modal */}
       <AICareerChat open={chatOpen} onOpenChange={setChatOpen} />
     </div>
