@@ -160,15 +160,24 @@ export async function updateEmployeeResumeData(params: Creds & { resumeData: any
     resumeDataKeys: Object.keys(params.resumeData || {})
   })
 
-  const resp = await fetch(`${API_BASE_URL}/employee/update-resume-data`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(params),
-  })
+  try {
+    const resp = await fetch(`${API_BASE_URL}/employee/update-resume-data`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(params),
+    })
 
-  const result = await resp.json()
-  console.log("[v0][api] updateEmployeeResumeData: Response received:", result)
-  return result
+    if (!resp.ok) {
+      throw new Error(`HTTP error! status: ${resp.status}`)
+    }
+
+    const result = await resp.json()
+    console.log("[v0][api] updateEmployeeResumeData: Response received:", result)
+    return result
+  } catch (error) {
+    console.error("[v0][api] updateEmployeeResumeData: Request failed:", error)
+    throw error
+  }
 }
 
 // Fetch Employee Resume Parsed Data API for AI Career Chat

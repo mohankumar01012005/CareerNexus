@@ -26,6 +26,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
   const [uploadStatus, setUploadStatus] = useState<"idle" | "success" | "error">("idle")
   const [uploadMessage, setUploadMessage] = useState("")
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [aiProcessing, setAiProcessing] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -47,128 +48,132 @@ const FileUpload: React.FC<FileUploadProps> = ({
     setUploadMessage("")
   }
 
+  const handleAiAnalysisAndDataUpdate = async (file: File, credentials: { email: string; password: string }) => {
+    try {
+      console.log("[v0] ===== STARTING AI ANALYSIS =====")
+      console.log("[v0] File details:", {
+        name: file.name,
+        size: file.size,
+        type: file.type,
+        lastModified: new Date(file.lastModified).toISOString(),
+      })
+
+      const startTime = Date.now()
+      const aiJson = await analyzeResumeFile(file)
+      const endTime = Date.now()
+
+      console.log("[v0] ===== AI ANALYSIS COMPLETED =====")
+      console.log("[v0] Analysis duration:", (endTime - startTime) / 1000, "seconds")
+      console.log("[v0] Extracted resume data:")
+      console.log("[v0] - Name:", aiJson.name)
+      console.log("[v0] - Email:", aiJson.email)
+      console.log("[v0] - Technical Skills:", aiJson.skills.technical)
+
+      // Store in URL as requested (base64 + URI encoded)
+      console.log("[v0] Encoding result for URL storage...")
+      const encoded = encodeURIComponent(btoa(unescape(encodeURIComponent(JSON.stringify(aiJson)))))
+      const url = new URL(window.location.href)
+      url.searchParams.set("resume_ai", encoded)
+      window.history.replaceState({}, "", url.toString())
+      console.log("[v0] AI analysis result stored in URL parameter 'resume_ai'")
+
+      // Update resume data in backend
+      console.log("[v0] Updating resume data in backend...")
+      const result = await updateEmployeeResumeData({
+        email: credentials.email,
+        password: credentials.password,
+        resumeData: aiJson,
+      })
+      
+      console.log("[v0] Resume data update response:", result)
+      
+      if (result.success) {
+        console.log("[v0] Resume data successfully updated in backend")
+      } else {
+        console.error("[v0] Failed to update resume data:", result.message)
+        throw new Error(result.message || "Failed to update resume data")
+      }
+
+      console.log("[v0] ===== AI INTEGRATION COMPLETE =====")
+      return aiJson
+    } catch (error) {
+      console.error("[v0] ===== AI ANALYSIS FAILED =====")
+      console.error("[v0] Error:", error)
+      throw error
+    }
+  }
+
+  const getCredentials = (): { email: string; password: string } | null => {
+    // Priority: props -> localStorage -> null
+    if (authCredentials?.email && authCredentials?.password) {
+      return authCredentials
+    }
+
+    if (typeof window !== "undefined") {
+      const email = window.localStorage.getItem("employeeEmail") || window.localStorage.getItem("authEmail")
+      const password = window.localStorage.getItem("employeePassword") || window.localStorage.getItem("authPassword")
+      
+      if (email && password) {
+        console.log("[v0] Using credentials from localStorage")
+        return { email, password }
+      }
+    }
+
+    console.warn("[v0] No credentials available for resume data update")
+    return null
+  }
+
   const handleUpload = async () => {
     if (!selectedFile) return
 
     console.log("[v0] Starting upload for file:", selectedFile.name)
     setIsUploading(true)
+    setAiProcessing(false)
     setUploadStatus("idle")
     setUploadMessage("Uploading file...")
 
-    const fileForAI = selectedFile
-    ;(async () => {
-      try {
-        console.log("[v0] ===== STARTING AI ANALYSIS =====")
-        console.log("[v0] File details:", {
-          name: fileForAI.name,
-          size: fileForAI.size,
-          type: fileForAI.type,
-          lastModified: new Date(fileForAI.lastModified).toISOString(),
-        })
-
-        const startTime = Date.now()
-        const aiJson = await analyzeResumeFile(fileForAI)
-        const endTime = Date.now()
-
-        console.log("[v0] ===== AI ANALYSIS COMPLETED =====")
-        console.log("[v0] Analysis duration:", (endTime - startTime) / 1000, "seconds")
-        console.log("[v0] Extracted resume data:")
-        console.log("[v0] - Name:", aiJson.name)
-        console.log("[v0] - Email:", aiJson.email)
-        console.log("[v0] - Phone:", aiJson.phone)
-        console.log("[v0] - Location:", aiJson.location)
-        console.log("[v0] - Experience Years:", aiJson.total_experience_years)
-        console.log("[v0] - Current Role:", aiJson.current_role)
-        console.log("[v0] - Technical Skills:", aiJson.skills.technical)
-        console.log("[v0] - Soft Skills:", aiJson.skills.soft)
-        console.log("[v0] - Tools:", aiJson.skills.tools)
-        console.log("[v0] - Work Experience Count:", aiJson.work_experience.length)
-        console.log("[v0] - Education Count:", aiJson.education.length)
-        console.log("[v0] - Certifications Count:", aiJson.certifications.length)
-        console.log("[v0] - Projects Count:", aiJson.projects.length)
-        console.log("[v0] - Languages:", aiJson.languages)
-        console.log("[v0] - LinkedIn:", aiJson.links.linkedin)
-        console.log("[v0] - GitHub:", aiJson.links.github)
-        console.log("[v0] - Strengths:", aiJson.industry_insights.strengths)
-        console.log("[v0] - Weaknesses:", aiJson.industry_insights.weaknesses)
-        console.log("[v0] - Role Fit:", aiJson.industry_insights.role_fit)
-        console.log("[v0] - Improvement Suggestions:", aiJson.industry_insights.improvement_suggestions)
-        console.log("[v0] ===== FULL JSON OBJECT =====")
-        console.log("[v0] Complete analysis result:", JSON.stringify(aiJson, null, 2))
-
-        // Store in URL as requested (base64 + URI encoded)
-        console.log("[v0] Encoding result for URL storage...")
-        const encoded = encodeURIComponent(btoa(unescape(encodeURIComponent(JSON.stringify(aiJson)))))
-        const url = new URL(window.location.href)
-        url.searchParams.set("resume_ai", encoded)
-        window.history.replaceState({}, "", url.toString())
-        console.log("[v0] AI analysis result stored in URL parameter 'resume_ai'")
-
-        // Try to persist AI parsed data to backend using either prop credentials or stored ones.
-        try {
-          let creds = authCredentials
-          if (!creds && typeof window !== "undefined") {
-            const lsEmail = window.localStorage.getItem("employeeEmail") || window.localStorage.getItem("authEmail")
-            const lsPassword =
-              window.localStorage.getItem("employeePassword") || window.localStorage.getItem("authPassword")
-            if (lsEmail && lsPassword) {
-              creds = { email: lsEmail, password: lsPassword }
-              console.log("[v0] Using credentials from localStorage for resume-data post.")
-            }
-          }
-
-          if (typeof window !== "undefined" && aiJson && creds?.email && creds?.password) {
-            console.log("[v0] Posting parsed resume data to backend via utils/api.updateEmployeeResumeData...")
-            const json = await updateEmployeeResumeData({
-              email: creds.email,
-              password: creds.password,
-              resumeData: aiJson,
-            })
-            console.log("[v0] Backend resume-data response:", json)
-          } else {
-            console.warn(
-              "[v0] No credentials available for resume-data post. Provide authCredentials prop or store employeeEmail/employeePassword in localStorage.",
-            )
-          }
-        } catch (e) {
-          console.error("[v0] Failed to persist AI resume data:", e)
-        }
-
-        console.log("[v0] ===== AI INTEGRATION COMPLETE =====")
-      } catch (e: any) {
-        console.error("[v0] ===== AI ANALYSIS FAILED =====")
-        console.error("[v0] Error type:", e?.constructor?.name || "Unknown")
-        console.error("[v0] Error message:", e?.message || e)
-        console.error("[v0] Full error object:", e)
-        if (e?.stack) {
-          console.error("[v0] Error stack:", e.stack)
-        }
-        console.error("[v0] ===== AI ANALYSIS ERROR END =====")
-      }
-    })()
+    const credentials = getCredentials()
+    if (!credentials) {
+      setUploadStatus("error")
+      setUploadMessage("Authentication credentials not available")
+      setIsUploading(false)
+      return
+    }
 
     try {
-      const result = await uploadFile(selectedFile)
+      // Step 1: Upload file to storage
+      const uploadResult = await uploadFile(selectedFile)
 
-      if (result.success) {
-        console.log("[v0] Upload successful! Public URL:", result.publicUrl)
-        setUploadStatus("success")
-        setUploadMessage(`File uploaded successfully! Public URL: ${result.publicUrl}`)
-
-        // Call the callback if provided
-        if (onUploadComplete) {
-          onUploadComplete(result)
-        }
-
-        // Reset file selection
-        setSelectedFile(null)
-        if (fileInputRef.current) {
-          fileInputRef.current.value = ""
-        }
-      } else {
-        console.error("[v0] Upload failed:", result.error)
+      if (!uploadResult.success) {
+        console.error("[v0] Upload failed:", uploadResult.error)
         setUploadStatus("error")
-        setUploadMessage(`Upload failed: ${result.error}`)
+        setUploadMessage(`Upload failed: ${uploadResult.error}`)
+        return
+      }
+
+      console.log("[v0] Upload successful! Public URL:", uploadResult.publicUrl)
+      setUploadStatus("success")
+      setUploadMessage("File uploaded successfully! Processing resume data...")
+
+      // Step 2: Process AI analysis and update resume data
+      setAiProcessing(true)
+      try {
+        await handleAiAnalysisAndDataUpdate(selectedFile, credentials)
+        setUploadMessage("File uploaded and resume data processed successfully!")
+      } catch (aiError) {
+        console.error("[v0] AI processing failed, but file was uploaded:", aiError)
+        setUploadMessage("File uploaded, but resume analysis failed. You can retry analysis later.")
+      }
+
+      // Call the callback if provided
+      if (onUploadComplete) {
+        onUploadComplete(uploadResult)
+      }
+
+      // Reset file selection
+      setSelectedFile(null)
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ""
       }
     } catch (error) {
       console.error("[v0] Upload error:", error)
@@ -176,6 +181,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
       setUploadMessage("An unexpected error occurred during upload")
     } finally {
       setIsUploading(false)
+      setAiProcessing(false)
     }
   }
 
@@ -188,7 +194,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
   }
 
   const getStatusIcon = () => {
-    if (isUploading) return <Loader2 className="w-4 h-4 animate-spin" />
+    if (isUploading || aiProcessing) return <Loader2 className="w-4 h-4 animate-spin" />
     if (uploadStatus === "success") return <CheckCircle className="w-4 h-4 text-green-500" />
     if (uploadStatus === "error") return <AlertCircle className="w-4 h-4 text-red-500" />
     if (selectedFile) return <FileText className="w-4 h-4" />
@@ -196,6 +202,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
   }
 
   const getButtonText = () => {
+    if (aiProcessing) return "Processing Resume..."
     if (isUploading) return "Uploading..."
     if (selectedFile) return `Upload ${selectedFile.name}`
     return "Select Resume"
@@ -213,7 +220,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
 
       <Button
         onClick={handleButtonClick}
-        disabled={isUploading}
+        disabled={isUploading || aiProcessing}
         variant={getButtonVariant()}
         className="w-full h-12 justify-start"
       >
@@ -221,7 +228,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
         <span className="ml-2">{getButtonText()}</span>
       </Button>
 
-      {selectedFile && !isUploading && uploadStatus === "idle" && (
+      {selectedFile && !isUploading && !aiProcessing && uploadStatus === "idle" && (
         <Card className="glass-card">
           <CardContent className="p-4">
             <div className="flex items-center space-x-3">
@@ -246,6 +253,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
                 className={`text-sm ${uploadStatus === "success" ? "text-green-600" : uploadStatus === "error" ? "text-red-600" : ""}`}
               >
                 {uploadMessage}
+                {aiProcessing && " (This may take a few seconds)"}
               </p>
             </div>
           </CardContent>
