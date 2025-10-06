@@ -189,3 +189,89 @@ export const getEmployeeResumeParsedData = async (params: { email: string; passw
   })
   return resp.json()
 }
+
+// NEW: Career Goals APIs
+export const getEmployeeCareerGoals = async (params: { email: string; password: string }) => {
+  const endpoint = `${API_CONFIG.BASE_URL}/employee/get-career-goals`
+  console.log("[v0][api] getEmployeeCareerGoals: request", {
+    endpoint,
+    hasEmail: !!params?.email,
+    hasPassword: !!params?.password,
+  })
+
+  try {
+    const resp = await fetch(endpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(params),
+    })
+
+    const result = await resp.json()
+    console.log("[v0][api] getEmployeeCareerGoals: response", result)
+    return result
+  } catch (error) {
+    console.error("[v0][api] getEmployeeCareerGoals: error", error)
+    throw error
+  }
+}
+
+export const addEmployeeCareerGoal = async (params: {
+  email: string
+  password: string
+  targetRole: string
+  priority?: string
+  targetDate?: string
+  skillsRequired?: string[]
+}) => {
+  const endpoint = `${API_CONFIG.BASE_URL}/employee/add-career-goal`
+  console.log("[v0][api] addEmployeeCareerGoal: request", {
+    endpoint,
+    hasEmail: !!params?.email,
+    hasPassword: !!params?.password,
+    targetRole: params.targetRole,
+  })
+
+  try {
+    const resp = await fetch(endpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(params),
+    })
+
+    const result = await resp.json()
+    console.log("[v0][api] addEmployeeCareerGoal: response", result)
+    return result
+  } catch (error) {
+    console.error("[v0][api] addEmployeeCareerGoal: error", error)
+    throw error
+  }
+}
+
+export const updateEmployeeCareerGoals = async (params: {
+  email: string
+  password: string
+  careerGoals: any[]
+}) => {
+  const endpoint = `${API_CONFIG.BASE_URL}/employee/update-career-goals`
+  console.log("[v0][api] updateEmployeeCareerGoals: request", {
+    endpoint,
+    hasEmail: !!params?.email,
+    hasPassword: !!params?.password,
+    careerGoalsCount: params.careerGoals?.length || 0,
+  })
+
+  try {
+    const resp = await fetch(endpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(params),
+    })
+
+    const result = await resp.json()
+    console.log("[v0][api] updateEmployeeCareerGoals: response", result)
+    return result
+  } catch (error) {
+    console.error("[v0][api] updateEmployeeCareerGoals: error", error)
+    throw error
+  }
+}
