@@ -8,11 +8,12 @@ import { Button } from "../../components/ui/button"
 import { Progress } from "../../components/ui/progress"
 import { Badge } from "../../components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "../../components/ui/avatar"
-import { Target, TrendingUp, BookOpen, Users, Zap, Award, MessageCircle, Compass, Star, Plus, X } from "lucide-react"
+import { Target, TrendingUp, BookOpen, Users, Zap, Award, MessageCircle, Compass, Plus } from "lucide-react"
 import type { Employee } from "../../types/auth"
-import { updateEmployeeResume, getEmployeeResumeData, getEmployeeCareerGoals, addEmployeeCareerGoal } from "../../utils/api"
+import { updateEmployeeResume, getEmployeeResumeData } from "../../utils/api"
 import EmployeeUpload from "../../components/employee-upload"
 import AICareerChat from "../../components/ai/ai-career-chat"
+import CareerGoals from "./CareerGoals"
 
 interface ResumeSkill {
   id: string
@@ -33,15 +34,6 @@ interface ResumeData {
   email?: string
 }
 
-interface CareerGoal {
-  _id?: string
-  targetRole: string
-  priority: "Low" | "Medium" | "High"
-  targetDate: string
-  progress: number
-  skillsRequired: string[]
-}
-
 const EmployeeDashboard: React.FC = () => {
   const { user, credentials } = useAuth() as unknown as {
     user: Employee
@@ -51,19 +43,6 @@ const EmployeeDashboard: React.FC = () => {
   const [resumeSkills, setResumeSkills] = useState<ResumeSkill[]>([])
   const [isLoadingResume, setIsLoadingResume] = useState(true)
   const [lastUpdate, setLastUpdate] = useState<number>(Date.now())
-  const [goalModalOpen, setGoalModalOpen] = useState(false)
-  const [careerGoals, setCareerGoals] = useState<CareerGoal[]>([])
-  const [isLoadingGoals, setIsLoadingGoals] = useState(false)
-  const [isAddingGoal, setIsAddingGoal] = useState(false)
-
-  // Form state for new goal
-  const [newGoal, setNewGoal] = useState<Omit<CareerGoal, 'progress'>>({
-    targetRole: "",
-    priority: "Medium",
-    targetDate: "",
-    skillsRequired: []
-  })
-  const [currentSkill, setCurrentSkill] = useState("")
 
   // Fetch resume data and extract technical skills
   const fetchResumeSkills = async () => {
@@ -113,41 +92,8 @@ const EmployeeDashboard: React.FC = () => {
     }
   }
 
-  // Fetch career goals
-  const fetchCareerGoals = async () => {
-    if (!credentials?.email || !credentials?.password) {
-      console.log("No credentials available for fetching career goals")
-      return
-    }
-
-    try {
-      setIsLoadingGoals(true)
-      console.log("Fetching career goals...")
-      const response = await getEmployeeCareerGoals({
-        email: credentials.email,
-        password: credentials.password,
-      })
-
-      console.log("Career goals response:", response)
-
-      if (response.success && response.careerGoals) {
-        setCareerGoals(response.careerGoals)
-        console.log(`Loaded ${response.careerGoals.length} career goals`)
-      } else {
-        console.log("No career goals found")
-        setCareerGoals([])
-      }
-    } catch (error) {
-      console.error("Failed to fetch career goals:", error)
-      setCareerGoals([])
-    } finally {
-      setIsLoadingGoals(false)
-    }
-  }
-
   useEffect(() => {
     fetchResumeSkills()
-    fetchCareerGoals()
   }, [credentials, lastUpdate])
 
   // Helper function to get appropriate icons for skills
@@ -184,85 +130,6 @@ const EmployeeDashboard: React.FC = () => {
       }
     } catch (e) {
       console.error("[v0] Error handling upload completion:", e)
-    }
-  }
-
-  // Handle adding new career goal
-  const handleAddGoal = async (e: React.FormEvent) => {
-    e.preventDefault()
-    
-    if (!credentials?.email || !credentials?.password) {
-      console.error("No credentials available for adding career goal")
-      return
-    }
-
-    if (!newGoal.targetRole.trim()) {
-      alert("Please enter a target role")
-      return
-    }
-
-    try {
-      setIsAddingGoal(true)
-      console.log("Adding new career goal:", newGoal)
-
-      const response = await addEmployeeCareerGoal({
-        email: credentials.email,
-        password: credentials.password,
-        targetRole: newGoal.targetRole,
-        priority: newGoal.priority,
-        targetDate: newGoal.targetDate || new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-        skillsRequired: newGoal.skillsRequired,
-      })
-
-      console.log("Add career goal response:", response)
-
-      if (response.success) {
-        // Refresh goals
-        await fetchCareerGoals()
-        // Close modal and reset form
-        setGoalModalOpen(false)
-        setNewGoal({
-          targetRole: "",
-          priority: "Medium",
-          targetDate: "",
-          skillsRequired: []
-        })
-        setCurrentSkill("")
-      } else {
-        alert(`Failed to add goal: ${response.message}`)
-      }
-    } catch (error) {
-      console.error("Error adding career goal:", error)
-      alert("Failed to add career goal. Please try again.")
-    } finally {
-      setIsAddingGoal(false)
-    }
-  }
-
-  // Add skill to the skillsRequired array
-  const addSkill = () => {
-    if (currentSkill.trim() && !newGoal.skillsRequired.includes(currentSkill.trim())) {
-      setNewGoal(prev => ({
-        ...prev,
-        skillsRequired: [...prev.skillsRequired, currentSkill.trim()]
-      }))
-      setCurrentSkill("")
-    }
-  }
-
-  // Remove skill from skillsRequired array
-  const removeSkill = (skillToRemove: string) => {
-    setNewGoal(prev => ({
-      ...prev,
-      skillsRequired: prev.skillsRequired.filter(skill => skill !== skillToRemove)
-    }))
-  }
-
-  // Handle Enter key in skills input
-  const handleSkillKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      e.preventDefault()
-      addSkill()
     }
   }
 
@@ -305,27 +172,9 @@ const EmployeeDashboard: React.FC = () => {
     return "from-neon-orange/20 to-neon-orange/5"
   }
 
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case "High": return "bg-red-500/20 text-red-400 border-red-500/30"
-      case "Medium": return "bg-yellow-500/20 text-yellow-400 border-yellow-500/30"
-      case "Low": return "bg-green-500/20 text-green-400 border-green-500/30"
-      default: return "bg-gray-500/20 text-gray-400 border-gray-500/30"
-    }
-  }
-
   // Determine which skills to display - prioritize resume skills, fallback to user skills
   const displaySkills = resumeSkills.length > 0 ? resumeSkills : user.skills
   const skillsSource = resumeSkills.length > 0 ? "resume" : "profile"
-
-  // Determine which career goals to display - prioritize fetched goals, fallback to user goals
-  const displayGoals = careerGoals.length > 0 ? careerGoals : user.careerGoals.map(goal => ({
-    targetRole: goal,
-    priority: "Medium" as const,
-    targetDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
-    progress: 0,
-    skillsRequired: []
-  }))
 
   return (
     <div className="space-y-6 animate-fade-in w-full max-w-full overflow-x-hidden">
@@ -476,82 +325,8 @@ const EmployeeDashboard: React.FC = () => {
 
       {/* Career Goals & Recommendations */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Career Goals */}
-        <Card className="glass-card">
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <Target className="w-5 h-5 text-neon-purple flex-shrink-0" />
-              <span>Career Aspirations</span>
-            </CardTitle>
-            <CardDescription>
-              {isLoadingGoals ? "Loading your career goals..." : `You have ${displayGoals.length} career goals`}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {isLoadingGoals ? (
-              <div className="text-center py-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-neon-purple mx-auto"></div>
-                <p className="text-foreground-secondary mt-2">Loading career goals...</p>
-              </div>
-            ) : displayGoals.length === 0 ? (
-              <div className="text-center py-8 glass-card border-border/30">
-                <Target className="w-12 h-12 text-foreground-secondary mx-auto mb-4" />
-                <h3 className="text-lg font-semibold mb-2">No Career Goals</h3>
-                <p className="text-foreground-secondary mb-4">
-                  Set your career aspirations to track your progress
-                </p>
-              </div>
-            ) : (
-              displayGoals.map((goal, index) => (
-                <div
-                  key={index}
-                  className="flex items-center justify-between p-3 glass-card border-border/30 tilt-3d"
-                  style={{ animationDelay: `${index * 0.1}s` }}
-                >
-                  <div className="flex items-center space-x-3 min-w-0 flex-1">
-                    <Star className="w-4 h-4 text-neon-teal flex-shrink-0" />
-                    <div className="min-w-0 flex-1">
-                      <span className="font-medium truncate block">{goal.targetRole}</span>
-                      <div className="flex items-center space-x-2 mt-1">
-                        <Badge variant="outline" className={`text-xs ${getPriorityColor(goal.priority)}`}>
-                          {goal.priority}
-                        </Badge>
-                        <span className="text-xs text-foreground-secondary">
-                          Target: {new Date(goal.targetDate).toLocaleDateString()}
-                        </span>
-                      </div>
-                      {goal.skillsRequired.length > 0 && (
-                        <div className="flex flex-wrap gap-1 mt-2">
-                          {goal.skillsRequired.slice(0, 3).map((skill, skillIndex) => (
-                            <Badge key={skillIndex} variant="secondary" className="text-xs">
-                              {skill}
-                            </Badge>
-                          ))}
-                          {goal.skillsRequired.length > 3 && (
-                            <Badge variant="secondary" className="text-xs">
-                              +{goal.skillsRequired.length - 3} more
-                            </Badge>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                  <Badge variant="outline" className="text-xs flex-shrink-0 ml-2">
-                    {goal.progress}%
-                  </Badge>
-                </div>
-              ))
-            )}
-            <Button 
-              variant="outline" 
-              className="w-full glass-button bg-transparent" 
-              onClick={() => setGoalModalOpen(true)}
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              Add New Goal
-            </Button>
-          </CardContent>
-        </Card>
+        {/* Career Goals Component */}
+        <CareerGoals />
 
         {/* AI Recommendations */}
         <Card className="glass-card">
@@ -629,140 +404,10 @@ const EmployeeDashboard: React.FC = () => {
         </Card>
         <Card className="glass-card text-center p-4 tilt-3d">
           <Award className="w-8 h-8 text-neon-green mx-auto mb-2" />
-          <div className="text-xl font-bold text-gradient-primary">{displayGoals.length}</div>
+          <div className="text-xl font-bold text-gradient-primary">0</div>
           <div className="text-xs text-foreground-secondary">Career Goals</div>
         </Card>
       </div>
-      
-      {/* Add Goal Modal */}
-      {goalModalOpen && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="glass-card rounded-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-bold text-gradient-primary">Add New Career Goal</h2>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setGoalModalOpen(false)}
-                  className="h-8 w-8 p-0"
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-              
-              <form onSubmit={handleAddGoal} className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium mb-2 text-foreground">
-                    Target Role *
-                  </label>
-                  <input
-                    type="text"
-                    value={newGoal.targetRole}
-                    onChange={(e) => setNewGoal(prev => ({ ...prev, targetRole: e.target.value }))}
-                    placeholder="e.g., Senior Frontend Engineer"
-                    className="w-full p-3 rounded-lg bg-background/50 border border-border focus:border-neon-teal focus:outline-none focus:ring-2 focus:ring-neon-teal/20 transition-colors"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium mb-2 text-foreground">
-                    Priority
-                  </label>
-                  <select
-                    value={newGoal.priority}
-                    onChange={(e) => setNewGoal(prev => ({ ...prev, priority: e.target.value as "Low" | "Medium" | "High" }))}
-                    className="w-full p-3 rounded-lg bg-background/50 border border-border focus:border-neon-teal focus:outline-none focus:ring-2 focus:ring-neon-teal/20 transition-colors"
-                  >
-                    <option value="Low">Low</option>
-                    <option value="Medium">Medium</option>
-                    <option value="High">High</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium mb-2 text-foreground">
-                    Target Date
-                  </label>
-                  <input
-                    type="date"
-                    value={newGoal.targetDate}
-                    onChange={(e) => setNewGoal(prev => ({ ...prev, targetDate: e.target.value }))}
-                    className="w-full p-3 rounded-lg bg-background/50 border border-border focus:border-neon-teal focus:outline-none focus:ring-2 focus:ring-neon-teal/20 transition-colors"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium mb-2 text-foreground">
-                    Required Skills
-                  </label>
-                  <div className="flex space-x-2 mb-2">
-                    <input
-                      type="text"
-                      value={currentSkill}
-                      onChange={(e) => setCurrentSkill(e.target.value)}
-                      onKeyPress={handleSkillKeyPress}
-                      placeholder="Enter a skill and press Enter"
-                      className="flex-1 p-3 rounded-lg bg-background/50 border border-border focus:border-neon-teal focus:outline-none focus:ring-2 focus:ring-neon-teal/20 transition-colors"
-                    />
-                    <Button
-                      type="button"
-                      onClick={addSkill}
-                      className="bg-neon-teal hover:bg-neon-teal/80 text-white"
-                    >
-                      Add
-                    </Button>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {newGoal.skillsRequired.map((skill, index) => (
-                      <Badge
-                        key={index}
-                        variant="secondary"
-                        className="flex items-center space-x-1 bg-neon-blue/20 text-neon-blue border-neon-blue/30"
-                      >
-                        <span>{skill}</span>
-                        <button
-                          type="button"
-                          onClick={() => removeSkill(skill)}
-                          className="hover:text-red-400 transition-colors"
-                        >
-                          <X className="h-3 w-3" />
-                        </button>
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="flex space-x-3 pt-4">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => setGoalModalOpen(false)}
-                    className="flex-1 glass-button bg-transparent"
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    type="submit"
-                    disabled={isAddingGoal}
-                    className="flex-1 bg-gradient-to-r from-neon-teal to-neon-purple hover:from-neon-teal/80 hover:to-neon-purple/80 text-white"
-                  >
-                    {isAddingGoal ? (
-                      <>
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                        Adding...
-                      </>
-                    ) : (
-                      "Add Goal"
-                    )}
-                  </Button>
-                </div>
-              </form>
-            </div>
-          </div>
-        </div>
-      )}
       
       {/* Render the AI chat modal */}
       <AICareerChat open={chatOpen} onOpenChange={setChatOpen} />

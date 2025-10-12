@@ -275,3 +275,32 @@ export const updateEmployeeCareerGoals = async (params: {
     throw error
   }
 }
+// Delete career goal by credentials
+export const deleteCareerGoalByCredentials = async (params: {
+  email: string
+  password: string
+  goalId: string
+}) => {
+  const endpoint = `${API_CONFIG.BASE_URL}/employee/delete-career-goal`
+  console.log("[v0][api] deleteCareerGoalByCredentials: request", {
+    endpoint,
+    hasEmail: !!params?.email,
+    hasPassword: !!params?.password,
+    goalId: params.goalId,
+  })
+
+  try {
+    const resp = await fetch(endpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(params),
+    })
+
+    const result = await resp.json()
+    console.log("[v0][api] deleteCareerGoalByCredentials: response", result)
+    return result
+  } catch (error) {
+    console.error("[v0][api] deleteCareerGoalByCredentials: error", error)
+    throw error
+  }
+}

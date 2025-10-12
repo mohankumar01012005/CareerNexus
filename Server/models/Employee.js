@@ -36,6 +36,17 @@ const careerGoalSchema = new mongoose.Schema({
     default: 0,
   },
   skillsRequired: [String],
+  status: {
+    type: String,
+    enum: ["pending", "approved", "rejected"],
+    default: "pending"
+  },
+  submittedAt: {
+    type: Date,
+    default: Date.now
+  },
+  reviewedAt: Date,
+  reviewNotes: String
 })
 
 const employeeSchema = new mongoose.Schema(
