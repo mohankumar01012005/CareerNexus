@@ -14,7 +14,8 @@ const {
   updateResumeDataByCredentials,
   getCareerGoalsByCredentials,
   addCareerGoalByCredentials,
-  updateCareerGoalsByCredentials
+  updateCareerGoalsByCredentials,
+  deleteCareerGoalByCredentials
 } = require("../controllers/employeeController")
 
 const router = express.Router()
@@ -49,5 +50,6 @@ router.post("/update-resume-data", updateResumeDataByCredentials)
 router.post("/get-career-goals", getCareerGoalsByCredentials)
 router.post("/add-career-goal", addCareerGoalByCredentials)
 router.post("/update-career-goals", updateCareerGoalsByCredentials)
+router.post("/delete-career-goal", deleteCareerGoalByCredentials)
 
 module.exports = router

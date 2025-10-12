@@ -41,6 +41,7 @@ setTimeout(() => {
 // Routes
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/employee', require('./routes/employees'));
+app.use('/api/hr', require('./routes/hr')); // Add HR routes
 
 // Error handling middleware
 app.use((err, req, res, next) => {
