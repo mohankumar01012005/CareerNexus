@@ -36,17 +36,34 @@ export default function EmployeeUpload({
   }, [credentials])
 
   const handleUploadCompleteInternal = async (result: any) => {
-    if (!result?.success || !result.publicUrl) return
-    if (!authCredentials?.email || !authCredentials?.password) return
+    if (!result?.success || !result.publicUrl) {
+      console.error("[v0] Upload completed but no public URL available")
+      return
+    }
+    
+    if (!authCredentials?.email || !authCredentials?.password) {
+      console.error("[v0] No credentials available for resume link update")
+      return
+    }
+    
     try {
       setLinkStatus("saving")
+      console.log("[v0] Updating resume link in backend...")
+      
       const resp = await updateEmployeeResume({
         email: authCredentials.email,
         password: authCredentials.password,
         resumeLink: result.publicUrl,
       })
+      
       console.log("[v0] updateEmployeeResume response:", resp)
-      setLinkStatus("saved")
+      
+      if (resp.success) {
+        setLinkStatus("saved")
+        console.log("[v0] Resume link successfully updated")
+      } else {
+        throw new Error(resp.message || "Failed to update resume link")
+      }
 
       if (onUploadComplete) {
         await onUploadComplete(result)
