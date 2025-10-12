@@ -304,3 +304,113 @@ export const deleteCareerGoalByCredentials = async (params: {
     throw error
   }
 }
+// HR APIs
+export const getAllEmployeesHR = async () => {
+  const endpoint = `${API_CONFIG.BASE_URL}/hr/employees`
+  console.log("[HR][api] getAllEmployeesHR: request", { endpoint })
+
+  try {
+    const resp = await fetch(endpoint, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: createBasicAuthHeader(HR_CREDENTIALS.EMAIL, HR_CREDENTIALS.PASSWORD),
+      },
+    })
+
+    if (!resp.ok) {
+      throw new Error(`HTTP error! status: ${resp.status}`)
+    }
+
+    const result = await resp.json()
+    console.log("[HR][api] getAllEmployeesHR: response", result)
+    return result
+  } catch (error) {
+    console.error("[HR][api] getAllEmployeesHR: error", error)
+    throw error
+  }
+}
+
+export const getPendingCareerGoalsHR = async () => {
+  const endpoint = `${API_CONFIG.BASE_URL}/hr/career-goals/pending`
+  console.log("[HR][api] getPendingCareerGoalsHR: request", { endpoint })
+
+  try {
+    const resp = await fetch(endpoint, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: createBasicAuthHeader(HR_CREDENTIALS.EMAIL, HR_CREDENTIALS.PASSWORD),
+      },
+    })
+
+    if (!resp.ok) {
+      throw new Error(`HTTP error! status: ${resp.status}`)
+    }
+
+    const result = await resp.json()
+    console.log("[HR][api] getPendingCareerGoalsHR: response", result)
+    return result
+  } catch (error) {
+    console.error("[HR][api] getPendingCareerGoalsHR: error", error)
+    throw error
+  }
+}
+
+export const updateCareerGoalStatusHR = async (params: {
+  employeeId: string
+  goalId: string
+  status: "approved" | "rejected"
+  reviewNotes?: string
+}) => {
+  const endpoint = `${API_CONFIG.BASE_URL}/hr/career-goals/status`
+  console.log("[HR][api] updateCareerGoalStatusHR: request", { endpoint, params })
+
+  try {
+    const resp = await fetch(endpoint, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: createBasicAuthHeader(HR_CREDENTIALS.EMAIL, HR_CREDENTIALS.PASSWORD),
+      },
+      body: JSON.stringify(params),
+    })
+
+    if (!resp.ok) {
+      throw new Error(`HTTP error! status: ${resp.status}`)
+    }
+
+    const result = await resp.json()
+    console.log("[HR][api] updateCareerGoalStatusHR: response", result)
+    return result
+  } catch (error) {
+    console.error("[HR][api] updateCareerGoalStatusHR: error", error)
+    throw error
+  }
+}
+
+export const getCareerGoalsStatsHR = async () => {
+  const endpoint = `${API_CONFIG.BASE_URL}/hr/career-goals/stats`
+  console.log("[HR][api] getCareerGoalsStatsHR: request", { endpoint })
+
+  try {
+    const resp = await fetch(endpoint, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: createBasicAuthHeader(HR_CREDENTIALS.EMAIL, HR_CREDENTIALS.PASSWORD),
+      },
+    })
+
+    if (!resp.ok) {
+      throw new Error(`HTTP error! status: ${resp.status}`)
+    }
+
+    const result = await resp.json()
+    console.log("[HR][api] getCareerGoalsStatsHR: response", result)
+    return result
+  } catch (error) {
+    console.error("[HR][api] getCareerGoalsStatsHR: error", error)
+    throw error
+  }
+}
