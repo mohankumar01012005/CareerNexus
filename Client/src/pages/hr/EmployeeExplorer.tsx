@@ -1,11 +1,9 @@
 "use client"
 
-// HR Employee Explorer - Advanced Search and Filtering for Employee Management
-
 import type React from "react"
-import { useState, useMemo } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { useAuth } from "../../contexts/AuthContext"
-import type { CreateEmployeeData, Employee } from "../../types/auth"
+import type { CreateEmployeeData } from "../../types/auth"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../components/ui/card"
 import { Badge } from "../../components/ui/badge"
 import { Button } from "../../components/ui/button"
@@ -40,21 +38,59 @@ import {
   SettingsIcon,
   Plus,
   UserPlus,
+  RefreshCw,
 } from "lucide-react"
+import { getAllEmployeesHR, createEmployeeApi } from "../../utils/api"
+
+interface Employee {
+  id: string
+  user_id: string
+  fullName: string
+  email: string
+  phoneNumber: string
+  department: string
+  role: string
+  joiningDate: string
+  tenure: number
+  skills: Array<{
+    name: string
+    proficiency: number
+    category: string
+  }>
+  careerGoals: Array<{
+    _id: string
+    targetRole: string
+    priority: string
+    targetDate: string
+    progress: number
+    skillsRequired: string[]
+    status: string
+    submittedAt?: string
+    reviewedAt?: string
+    reviewNotes?: string
+  }>
+  careerReadinessScore: number
+  isActive: boolean
+  lastLogin: string
+  resume_link: string
+  resume_data_count: number
+  createdAt: string
+  updatedAt: string
+}
 
 const EmployeeExplorer: React.FC = () => {
-  const { getAllEmployees, createEmployee } = useAuth()
   const { toast } = useToast()
-
-  const mockEmployees = getAllEmployees()
+  const [employees, setEmployees] = useState<Employee[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [isRefreshing, setIsRefreshing] = useState(false)
 
   // State management for filters and search
   const [searchTerm, setSearchTerm] = useState("")
   const [departmentFilter, setDepartmentFilter] = useState("all")
   const [roleFilter, setRoleFilter] = useState("all")
-  const [riskFilter, setRiskFilter] = useState("all")
-  const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null)
+  const [statusFilter, setStatusFilter] = useState("all")
 
+  const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null)
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [isCreating, setIsCreating] = useState(false)
   const [createForm, setCreateForm] = useState<CreateEmployeeData>({
@@ -68,32 +104,72 @@ const EmployeeExplorer: React.FC = () => {
     skills: [],
   })
 
+  // Fetch employees from backend
+  const fetchEmployees = async () => {
+    try {
+      setIsLoading(true)
+      const response = await getAllEmployeesHR()
+      
+      if (response.success) {
+        setEmployees(response.employees)
+      } else {
+        toast({
+          title: "❌ Failed to fetch employees",
+          description: response.message || "Please try again later",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      console.error("Failed to fetch employees:", error)
+      toast({
+        title: "❌ Connection Error",
+        description: "Could not connect to server. Please check your connection and try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsLoading(false)
+      setIsRefreshing(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchEmployees()
+  }, [])
+
+  const handleRefresh = () => {
+    setIsRefreshing(true)
+    fetchEmployees()
+  }
+
   // Get unique departments and roles for filter options
-  const departments = [...new Set(mockEmployees.map((emp) => emp.department))]
-  const roles = [...new Set(mockEmployees.map((emp) => emp.currentRole))]
+  const departments = [...new Set(employees.map((emp) => emp.department))]
+  const roles = [...new Set(employees.map((emp) => emp.role))]
 
   // Filter employees based on search and filter criteria
   const filteredEmployees = useMemo(() => {
-    return mockEmployees.filter((employee) => {
+    return employees.filter((employee) => {
       const matchesSearch =
-        employee.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        employee.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
         employee.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        employee.currentRole.toLowerCase().includes(searchTerm.toLowerCase())
+        employee.role.toLowerCase().includes(searchTerm.toLowerCase())
 
       const matchesDepartment = departmentFilter === "all" || employee.department === departmentFilter
-      const matchesRole = roleFilter === "all" || employee.currentRole === roleFilter
+      const matchesRole = roleFilter === "all" || employee.role === roleFilter
+      const matchesStatus = statusFilter === "all" || 
+        (statusFilter === "active" && employee.isActive) ||
+        (statusFilter === "inactive" && !employee.isActive)
 
-      return matchesSearch && matchesDepartment && matchesRole
+      return matchesSearch && matchesDepartment && matchesRole && matchesStatus
     })
-  }, [searchTerm, departmentFilter, roleFilter, mockEmployees])
+  }, [searchTerm, departmentFilter, roleFilter, statusFilter, employees])
 
   const handleCreateEmployee = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsCreating(true)
 
     try {
-      const success = await createEmployee(createForm)
-      if (success) {
+      const response = await createEmployeeApi(createForm)
+      if (response.success) {
         toast({
           title: "✅ Employee Created Successfully",
           description: `${createForm.name} has been added to the system and can now log in with their credentials.`,
@@ -109,12 +185,12 @@ const EmployeeExplorer: React.FC = () => {
           phone: "",
           skills: [],
         })
-        // Refresh the employee list without full page reload
-        // The mockEmployees array is already updated in the context
+        // Refresh the employee list
+        fetchEmployees()
       } else {
         toast({
           title: "❌ Failed to Create Employee",
-          description: "Email already exists or there was a server error. Please try again.",
+          description: response.message || "Email already exists or there was a server error. Please try again.",
           variant: "destructive",
         })
       }
@@ -130,30 +206,8 @@ const EmployeeExplorer: React.FC = () => {
   }
 
   // Helper functions for styling and data display
-  const getRiskColor = (risk: string) => {
-    switch (risk.toLowerCase()) {
-      case "high":
-        return "text-red-400 bg-red-400/10"
-      case "medium":
-        return "text-yellow-400 bg-yellow-400/10"
-      case "low":
-        return "text-neon-green bg-neon-green/10"
-      default:
-        return "text-foreground-secondary bg-muted"
-    }
-  }
-
-  const getPerformanceColor = (rating: string) => {
-    switch (rating.toLowerCase()) {
-      case "excellent":
-        return "text-neon-green bg-neon-green/10"
-      case "good":
-        return "text-neon-teal bg-neon-teal/10"
-      case "needs improvement":
-        return "text-yellow-400 bg-yellow-400/10"
-      default:
-        return "text-foreground-secondary bg-muted"
-    }
+  const getStatusColor = (isActive: boolean) => {
+    return isActive ? "text-neon-green bg-neon-green/10" : "text-red-400 bg-red-400/10"
   }
 
   const getDepartmentIcon = (department: string) => {
@@ -179,12 +233,25 @@ const EmployeeExplorer: React.FC = () => {
       .toUpperCase()
   }
 
+  const getGoalStatusColor = (status: string) => {
+    switch (status.toLowerCase()) {
+      case "approved":
+        return "text-neon-green bg-neon-green/10"
+      case "rejected":
+        return "text-red-400 bg-red-400/10"
+      case "pending":
+        return "text-yellow-400 bg-yellow-400/10"
+      default:
+        return "text-foreground-secondary bg-muted"
+    }
+  }
+
   // Reset all filters function
   const resetFilters = () => {
     setSearchTerm("")
     setDepartmentFilter("all")
     setRoleFilter("all")
-    setRiskFilter("all")
+    setStatusFilter("all")
   }
 
   return (
@@ -199,8 +266,17 @@ const EmployeeExplorer: React.FC = () => {
         </div>
         <div className="flex items-center space-x-3">
           <Badge variant="outline" className="text-sm">
-            {filteredEmployees.length} of {mockEmployees.length} employees
+            {filteredEmployees.length} of {employees.length} employees
           </Badge>
+          <Button
+            variant="outline"
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            className="glass-button bg-transparent"
+          >
+            <RefreshCw className={`w-4 h-4 mr-2 ${isRefreshing ? "animate-spin" : ""}`} />
+            Refresh
+          </Button>
           <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
             <DialogTrigger asChild>
               <Button className="btn-gradient-primary">
@@ -294,6 +370,7 @@ const EmployeeExplorer: React.FC = () => {
                         <SelectItem value="Sales">Sales</SelectItem>
                         <SelectItem value="Operations">Operations</SelectItem>
                         <SelectItem value="HR">Human Resources</SelectItem>
+                        <SelectItem value="Finance">Finance</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -381,7 +458,7 @@ const EmployeeExplorer: React.FC = () => {
             <span>Search & Filter</span>
           </CardTitle>
           <CardDescription>
-            Use advanced filters to find employees based on skills, department, role, and risk factors
+            Use advanced filters to find employees based on skills, department, role, and status
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -397,7 +474,7 @@ const EmployeeExplorer: React.FC = () => {
           </div>
 
           {/* Filter Row */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
             <Select value={departmentFilter} onValueChange={setDepartmentFilter}>
               <SelectTrigger className="glass-input">
                 <SelectValue placeholder="Department" />
@@ -426,6 +503,17 @@ const EmployeeExplorer: React.FC = () => {
               </SelectContent>
             </Select>
 
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="glass-input">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Status</SelectItem>
+                <SelectItem value="active">Active</SelectItem>
+                <SelectItem value="inactive">Inactive</SelectItem>
+              </SelectContent>
+            </Select>
+
             <div></div>
 
             <Button variant="outline" onClick={resetFilters} className="glass-button bg-transparent">
@@ -444,164 +532,272 @@ const EmployeeExplorer: React.FC = () => {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Employee</TableHead>
-                <TableHead>Department</TableHead>
-                <TableHead>Role</TableHead>
-                <TableHead>Readiness Score</TableHead>
-                <TableHead>Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredEmployees.map((employee, index) => (
-                <TableRow
-                  key={employee.id}
-                  className="hover:bg-primary/5 transition-colors"
-                  style={{ animationDelay: `${index * 0.1}s` }}
-                >
-                  <TableCell>
-                    <div className="flex items-center space-x-3">
-                      <Avatar className="w-10 h-10">
-                        <AvatarImage src={employee.avatar || "/placeholder.svg"} />
-                        <AvatarFallback className="bg-primary/20 text-primary font-semibold">
-                          {getInitials(employee.name)}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <div className="font-semibold">{employee.name}</div>
-                        <div className="text-sm text-foreground-secondary flex items-center">
-                          <Mail className="w-3 h-3 mr-1" />
-                          {employee.email}
-                        </div>
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="outline" className="flex items-center space-x-1 w-fit">
-                      {getDepartmentIcon(employee.department)}
-                      <span>{employee.department}</span>
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <div className="font-medium">{employee.currentRole}</div>
-                    <div className="text-sm text-foreground-secondary flex items-center">
-                      <Calendar className="w-3 h-3 mr-1" />
-                      Joined {new Date(employee.joinDate).toLocaleDateString()}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="space-y-1">
-                      <div className="flex justify-between text-sm">
-                        <span>Score</span>
-                        <span className="font-semibold">{employee.readinessScore}%</span>
-                      </div>
-                      <Progress value={employee.readinessScore} className="h-2" />
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <Dialog>
-                      <DialogTrigger asChild>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="glass-button bg-transparent"
-                          onClick={() => setSelectedEmployee(employee)}
-                        >
-                          <Eye className="w-4 h-4 mr-1" />
-                          View
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent className="max-w-4xl glass-card">
-                        <DialogHeader>
-                          <DialogTitle className="flex items-center space-x-3">
-                            <Avatar className="w-12 h-12">
-                              <AvatarImage src={employee.avatar || "/placeholder.svg"} />
-                              <AvatarFallback className="bg-primary/20 text-primary font-semibold">
-                                {getInitials(employee.name)}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div>
-                              <div className="text-xl">{employee.name}</div>
-                              <div className="text-sm text-foreground-secondary">{employee.currentRole}</div>
-                            </div>
-                          </DialogTitle>
-                        </DialogHeader>
-
-                        {/* Employee Detail View */}
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
-                          {/* Basic Information */}
-                          <div className="space-y-4">
-                            <div className="p-4 glass-card border-border/30">
-                              <h4 className="font-semibold mb-3 flex items-center">
-                                <SettingsIcon className="w-4 h-4 mr-2" />
-                                Basic Information
-                              </h4>
-                              <div className="space-y-2 text-sm">
-                                <div className="flex justify-between">
-                                  <span className="text-foreground-secondary">Email:</span>
-                                  <span>{employee.email}</span>
-                                </div>
-                                <div className="flex justify-between">
-                                  <span className="text-foreground-secondary">Department:</span>
-                                  <span>{employee.department}</span>
-                                </div>
-                                <div className="flex justify-between">
-                                  <span className="text-foreground-secondary">Phone:</span>
-                                  <span>{employee.phone || "Not provided"}</span>
-                                </div>
-                                <div className="flex justify-between">
-                                  <span className="text-foreground-secondary">Join Date:</span>
-                                  <span>{new Date(employee.joinDate).toLocaleDateString()}</span>
-                                </div>
-                              </div>
-                            </div>
-
-                            {/* Career Goals */}
-                            <div className="p-4 glass-card border-border/30">
-                              <h4 className="font-semibold mb-3 flex items-center">
-                                <Target className="w-4 h-4 mr-2" />
-                                Career Goals
-                              </h4>
-                              <div className="space-y-2">
-                                {employee.careerGoals.map((goal: string | number | boolean | React.ReactElement<any, string | React.JSXElementConstructor<any>> | Iterable<React.ReactNode> | React.ReactPortal | null | undefined, idx: React.Key | null | undefined) => (
-                                  <Badge key={idx} variant="outline" className="mr-2">
-                                    {goal}
-                                  </Badge>
-                                ))}
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Skills Chart */}
-                          <div className="space-y-4">
-                            <div className="p-4 glass-card border-border/30">
-                              <h4 className="font-semibold mb-3 flex items-center">
-                                <Award className="w-4 h-4 mr-2" />
-                                Skills Assessment
-                              </h4>
-                              <div className="space-y-3">
-                                {employee.skills.map((skill: { name: string | number | boolean | React.ReactElement<any, string | React.JSXElementConstructor<any>> | Iterable<React.ReactNode> | React.ReactPortal | null | undefined; level: string | number | boolean | React.ReactElement<any, string | React.JSXElementConstructor<any>> | Iterable<React.ReactNode> | null | undefined }, idx: React.Key | null | undefined) => (
-                                  <div key={idx} className="space-y-1">
-                                    <div className="flex justify-between text-sm">
-                                      <span>{skill.name}</span>
-                                      <span className="font-semibold">{skill.level}%</span>
-                                    </div>
-                                    <Progress value={Number(skill.level)} className="h-2" />
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </DialogContent>
-                    </Dialog>
-                  </TableCell>
+          {isLoading ? (
+            <div className="text-center py-12">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-neon-teal mx-auto"></div>
+              <p className="text-foreground-secondary mt-4">Loading employee data...</p>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Employee</TableHead>
+                  <TableHead>Department</TableHead>
+                  <TableHead>Role</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Readiness Score</TableHead>
+                  <TableHead>Career Goals</TableHead>
+                  <TableHead>Actions</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {filteredEmployees.map((employee, index) => (
+                  <TableRow
+                    key={employee.id}
+                    className="hover:bg-primary/5 transition-colors"
+                    style={{ animationDelay: `${index * 0.1}s` }}
+                  >
+                    <TableCell>
+                      <div className="flex items-center space-x-3">
+                        <Avatar className="w-10 h-10">
+                          <AvatarFallback className="bg-primary/20 text-primary font-semibold">
+                            {getInitials(employee.fullName)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <div className="font-semibold">{employee.fullName}</div>
+                          <div className="text-sm text-foreground-secondary flex items-center">
+                            <Mail className="w-3 h-3 mr-1" />
+                            {employee.email}
+                          </div>
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className="flex items-center space-x-1 w-fit">
+                        {getDepartmentIcon(employee.department)}
+                        <span>{employee.department}</span>
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <div className="font-medium">{employee.role}</div>
+                      <div className="text-sm text-foreground-secondary flex items-center">
+                        <Calendar className="w-3 h-3 mr-1" />
+                        {employee.tenure} months
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge className={getStatusColor(employee.isActive)}>
+                        {employee.isActive ? "Active" : "Inactive"}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <div className="space-y-1">
+                        <div className="flex justify-between text-sm">
+                          <span>Score</span>
+                          <span className="font-semibold">{employee.careerReadinessScore}%</span>
+                        </div>
+                        <Progress value={employee.careerReadinessScore} className="h-2" />
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="space-y-1">
+                        <div className="text-sm">
+                          Total: {employee.careerGoals.length}
+                        </div>
+                        <div className="flex flex-wrap gap-1">
+                          {employee.careerGoals.slice(0, 2).map((goal, idx) => (
+                            <Badge key={idx} variant="outline" className={`text-xs ${getGoalStatusColor(goal.status)}`}>
+                              {goal.status}
+                            </Badge>
+                          ))}
+                          {employee.careerGoals.length > 2 && (
+                            <Badge variant="outline" className="text-xs">
+                              +{employee.careerGoals.length - 2}
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Dialog>
+                        <DialogTrigger asChild>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="glass-button bg-transparent"
+                            onClick={() => setSelectedEmployee(employee)}
+                          >
+                            <Eye className="w-4 h-4 mr-1" />
+                            View
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent className="max-w-4xl glass-card max-h-[90vh] overflow-y-auto">
+                          <DialogHeader>
+                            <DialogTitle className="flex items-center space-x-3">
+                              <Avatar className="w-12 h-12">
+                                <AvatarFallback className="bg-primary/20 text-primary font-semibold">
+                                  {getInitials(employee.fullName)}
+                                </AvatarFallback>
+                              </Avatar>
+                              <div>
+                                <div className="text-xl">{employee.fullName}</div>
+                                <div className="text-sm text-foreground-secondary">{employee.role}</div>
+                              </div>
+                            </DialogTitle>
+                          </DialogHeader>
+
+                          {/* Employee Detail View */}
+                          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+                            {/* Basic Information */}
+                            <div className="space-y-4">
+                              <div className="p-4 glass-card border-border/30">
+                                <h4 className="font-semibold mb-3 flex items-center">
+                                  <SettingsIcon className="w-4 h-4 mr-2" />
+                                  Basic Information
+                                </h4>
+                                <div className="space-y-2 text-sm">
+                                  <div className="flex justify-between">
+                                    <span className="text-foreground-secondary">Email:</span>
+                                    <span>{employee.email}</span>
+                                  </div>
+                                  <div className="flex justify-between">
+                                    <span className="text-foreground-secondary">Department:</span>
+                                    <span>{employee.department}</span>
+                                  </div>
+                                  <div className="flex justify-between">
+                                    <span className="text-foreground-secondary">Phone:</span>
+                                    <span>{employee.phoneNumber || "Not provided"}</span>
+                                  </div>
+                                  <div className="flex justify-between">
+                                    <span className="text-foreground-secondary">Join Date:</span>
+                                    <span>{new Date(employee.joiningDate).toLocaleDateString()}</span>
+                                  </div>
+                                  <div className="flex justify-between">
+                                    <span className="text-foreground-secondary">Tenure:</span>
+                                    <span>{employee.tenure} months</span>
+                                  </div>
+                                  <div className="flex justify-between">
+                                    <span className="text-foreground-secondary">Status:</span>
+                                    <Badge className={getStatusColor(employee.isActive)}>
+                                      {employee.isActive ? "Active" : "Inactive"}
+                                    </Badge>
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Career Goals */}
+                              <div className="p-4 glass-card border-border/30">
+                                <h4 className="font-semibold mb-3 flex items-center">
+                                  <Target className="w-4 h-4 mr-2" />
+                                  Career Goals ({employee.careerGoals.length})
+                                </h4>
+                                <div className="space-y-3">
+                                  {employee.careerGoals.map((goal, idx) => (
+                                    <div key={goal._id} className="p-3 bg-primary/5 rounded border">
+                                      <div className="flex justify-between items-start mb-2">
+                                        <span className="font-medium">{goal.targetRole}</span>
+                                        <Badge className={getGoalStatusColor(goal.status)}>
+                                          {goal.status}
+                                        </Badge>
+                                      </div>
+                                      <div className="text-sm text-foreground-secondary space-y-1">
+                                        <div>Priority: {goal.priority}</div>
+                                        <div>Target: {new Date(goal.targetDate).toLocaleDateString()}</div>
+                                        <div>Progress: {goal.progress}%</div>
+                                        {goal.skillsRequired.length > 0 && (
+                                          <div>
+                                            Skills: {goal.skillsRequired.slice(0, 3).join(", ")}
+                                            {goal.skillsRequired.length > 3 && "..."}
+                                          </div>
+                                        )}
+                                        {goal.reviewNotes && (
+                                          <div className="mt-2 p-2 bg-background/50 rounded">
+                                            <strong>HR Notes:</strong> {goal.reviewNotes}
+                                          </div>
+                                        )}
+                                      </div>
+                                    </div>
+                                  ))}
+                                  {employee.careerGoals.length === 0 && (
+                                    <div className="text-center text-foreground-secondary py-4">
+                                      No career goals set
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Skills & Performance */}
+                            <div className="space-y-4">
+                              <div className="p-4 glass-card border-border/30">
+                                <h4 className="font-semibold mb-3 flex items-center">
+                                  <Award className="w-4 h-4 mr-2" />
+                                  Skills Assessment
+                                </h4>
+                                <div className="space-y-3">
+                                  {employee.skills.map((skill, idx) => (
+                                    <div key={idx} className="space-y-1">
+                                      <div className="flex justify-between text-sm">
+                                        <span>{skill.name}</span>
+                                        <span className="font-semibold">{skill.proficiency}%</span>
+                                      </div>
+                                      <Progress value={skill.proficiency} className="h-2" />
+                                      <div className="text-xs text-foreground-secondary">{skill.category}</div>
+                                    </div>
+                                  ))}
+                                  {employee.skills.length === 0 && (
+                                    <div className="text-center text-foreground-secondary py-4">
+                                      No skills recorded
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* Performance Metrics */}
+                              <div className="p-4 glass-card border-border/30">
+                                <h4 className="font-semibold mb-3 flex items-center">
+                                  <Award className="w-4 h-4 mr-2" />
+                                  Performance Metrics
+                                </h4>
+                                <div className="space-y-4">
+                                  <div>
+                                    <div className="flex justify-between text-sm mb-1">
+                                      <span>Career Readiness</span>
+                                      <span className="font-semibold">{employee.careerReadinessScore}%</span>
+                                    </div>
+                                    <Progress value={employee.careerReadinessScore} className="h-2" />
+                                  </div>
+                                  <div className="grid grid-cols-2 gap-4 text-sm">
+                                    <div className="text-center p-3 bg-primary/5 rounded">
+                                      <div className="font-semibold text-lg">{employee.careerGoals.length}</div>
+                                      <div className="text-foreground-secondary">Career Goals</div>
+                                    </div>
+                                    <div className="text-center p-3 bg-primary/5 rounded">
+                                      <div className="font-semibold text-lg">{employee.skills.length}</div>
+                                      <div className="text-foreground-secondary">Skills</div>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </DialogContent>
+                      </Dialog>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+          
+          {!isLoading && filteredEmployees.length === 0 && (
+            <div className="text-center py-12 text-foreground-secondary">
+              <Users className="w-12 h-12 mx-auto mb-4 opacity-50" />
+              <h3 className="text-lg font-semibold mb-2">No Employees Found</h3>
+              <p>Try adjusting your search criteria or create a new employee.</p>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
