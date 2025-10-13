@@ -50,35 +50,6 @@ SkillCompass is an enterprise-grade AI-powered talent management platform design
 - **Document Store**: MongoDB
 - **AI Provider**: Google Gemini API
 
-### Project Structure
-
-```
-SkillCompass/
-├── Client/                      # Frontend React application
-│   ├── src/
-│   │   ├── components/         # Reusable UI components
-│   │   │   ├── ui/            # Base UI components (shadcn)
-│   │   │   ├── layout/        # Layout components
-│   │   │   └── ai/            # AI-powered components
-│   │   ├── pages/             # Route pages
-│   │   │   ├── employee/      # Employee dashboard & features
-│   │   │   └── hr/            # HR dashboard & management
-│   │   ├── contexts/          # React contexts (Auth, etc.)
-│   │   ├── hooks/             # Custom React hooks
-│   │   ├── lib/               # Utility libraries
-│   │   ├── types/             # TypeScript type definitions
-│   │   ├── utils/             # Helper functions
-│   │   └── config/            # Configuration files
-│   └── public/                # Static assets
-├── Server/                     # Backend Express application
-│   ├── config/                # Configuration
-│   ├── controllers/           # Request handlers
-│   ├── models/                # Mongoose schemas
-│   ├── middleware/            # Custom middleware
-│   └── routes/                # API routes
-└── README.md                  # This file
-```
-
 ## Getting Started
 
 ### Prerequisites
@@ -176,69 +147,6 @@ cd Server
 npm start
 ```
 
-## API Documentation
-
-### Authentication
-
-#### POST `/api/auth/register`
-Register a new employee account
-```json
-{
-  "fullName": "John Doe",
-  "email": "john.doe@company.com",
-  "password": "SecurePass123!",
-  "department": "Engineering",
-  "role": "Software Engineer",
-  "joiningDate": "2024-01-01"
-}
-```
-
-#### POST `/api/auth/login`
-Login with credentials
-```json
-{
-  "email": "john.doe@company.com",
-  "password": "SecurePass123!"
-}
-```
-
-### Employee Endpoints
-
-#### GET `/api/employee/profile`
-Get current employee profile
-
-#### PUT `/api/employee/profile`
-Update employee profile
-
-#### POST `/api/employee/upload-resume`
-Upload and parse resume (PDF, DOC, DOCX)
-
-#### POST `/api/employee/goals`
-Create a new career goal
-
-#### GET `/api/employee/goals`
-Get all career goals
-
-### HR Endpoints
-
-#### GET `/api/hr/employees`
-Get all employees with filters
-
-#### GET `/api/hr/analytics`
-Get workforce analytics and KPIs
-
-#### GET `/api/hr/skill-gaps`
-Identify skill gaps across organization
-
-#### POST `/api/hr/jobs`
-Create new internal job posting
-
-#### GET `/api/hr/jobs`
-Get all job postings
-
-#### PUT `/api/hr/goals/:id/approve`
-Approve employee career goal
-
 ## Features Deep Dive
 
 ### Employee Portal
@@ -294,95 +202,6 @@ Approve employee career goal
    - Priority-based recommendations
    - Training needs assessment
 
-## Database Schema
-
-### User Model
-```javascript
-{
-  email: String (unique, required),
-  password: String (hashed, required),
-  userType: Enum['employee', 'hr'],
-  isActive: Boolean,
-  lastLogin: Date
-}
-```
-
-### Employee Model
-```javascript
-{
-  user: ObjectId (ref: User),
-  fullName: String (required),
-  phoneNumber: String,
-  department: Enum[departments],
-  role: String (required),
-  joiningDate: Date (required),
-  skills: [{
-    name: String,
-    proficiency: Number (0-100),
-    category: Enum[categories]
-  }],
-  careerGoals: [{
-    targetRole: String,
-    priority: Enum['High', 'Medium', 'Low'],
-    progress: Number (0-100),
-    status: Enum['pending', 'approved', 'rejected']
-  }],
-  careerReadinessScore: Number (0-100),
-  resume_data: Array
-}
-```
-
-### Job Model
-```javascript
-{
-  title: String (required),
-  department: Enum[departments],
-  location: String (required),
-  salaryRange: { min: Number, max: Number },
-  requiredSkills: [String],
-  status: Enum['draft', 'active', 'closed'],
-  applicants: [{
-    employee: ObjectId,
-    status: Enum['pending', 'reviewed', 'approved', 'rejected'],
-    matchPercentage: Number
-  }]
-}
-```
-
-## Security
-
-### Authentication
-- Password hashing with bcryptjs (salt rounds: 10)
-- Session-based authentication with Express Session
-- Secure session storage in MongoDB
-- HTTP-only cookies for session management
-
-### Data Protection
-- Input validation using Express Validator
-- XSS protection through sanitization
-- CORS configuration for API security
-- Environment variable protection
-
-### Best Practices
-- Passwords never stored in plain text
-- Sensitive data excluded from API responses
-- Role-based access control (RBAC)
-- Secure file upload handling
-
-## Performance Optimization
-
-- Code splitting with React lazy loading
-- Image optimization and lazy loading
-- Database query optimization with indexes
-- Caching strategies for frequent queries
-- Optimized bundle size with tree shaking
-
-## Browser Support
-
-- Chrome (latest)
-- Firefox (latest)
-- Safari (latest)
-- Edge (latest)
 
 ## Contributing
 
@@ -464,4 +283,4 @@ For support, email support@skillcompass.com or open an issue on GitHub.
 
 **Built with passion by the SkillCompass Team**
 
-For more information, visit [https://skillcompass.io](https://skillcompass.io)
+For more information, visit [https://skillcompass.io]([https://skillcompass.io](https://skillcompassclient.vercel.app/login))
