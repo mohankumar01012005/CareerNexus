@@ -1,5 +1,7 @@
 # SkillCompass
 
+**Live** : https://skillcompassclient.vercel.app/login
+
 > AI-Powered Talent Management Platform for Internal Career Development
 
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
