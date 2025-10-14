@@ -27,7 +27,7 @@ interface AuthContextType extends AuthState {
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 // API Base URL
-const API_BASE_URL = "https://skillupserver.vercel.app/api"
+const API_BASE_URL = "http://localhost:5000/api"
 
 // Mock employees for frontend display (will be replaced with API calls later)
 const mockEmployees: Employee[] = [

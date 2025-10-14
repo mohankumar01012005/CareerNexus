@@ -6,7 +6,7 @@ import { Button } from "./ui/button"
 import { Card, CardContent } from "./ui/card"
 import { Upload, FileText, CheckCircle, AlertCircle, Loader2 } from "lucide-react"
 import { uploadFile } from "../lib/supabase"
-import { analyzeResumeFile } from "./../lib/gemini"
+import { analyzeResumeFile, analyzeResumeFromUrl } from "./../lib/gemini"
 import { updateEmployeeResumeData } from "../utils/api"
 
 interface FileUploadProps {
@@ -48,7 +48,11 @@ const FileUpload: React.FC<FileUploadProps> = ({
     setUploadMessage("")
   }
 
-  const handleAiAnalysisAndDataUpdate = async (file: File, credentials: { email: string; password: string }) => {
+  const handleAiAnalysisAndDataUpdate = async (
+    file: File,
+    credentials: { email: string; password: string },
+    sourcePublicUrl?: string,
+  ) => {
     try {
       console.log("[v0] ===== STARTING AI ANALYSIS =====")
       console.log("[v0] File details:", {
@@ -59,9 +63,19 @@ const FileUpload: React.FC<FileUploadProps> = ({
       })
 
       const startTime = Date.now()
-      const aiJson = await analyzeResumeFile(file)
-      const endTime = Date.now()
 
+      let aiJson
+      try {
+        aiJson = await analyzeResumeFile(file)
+      } catch (fileErr) {
+        console.warn("[v0] File-based analysis failed, attempting URL-based analysis:", fileErr)
+        if (!sourcePublicUrl) {
+          throw fileErr
+        }
+        aiJson = await analyzeResumeFromUrl(sourcePublicUrl, file.type || undefined, { retries: 4, delayMs: 600 })
+      }
+
+      const endTime = Date.now()
       console.log("[v0] ===== AI ANALYSIS COMPLETED =====")
       console.log("[v0] Analysis duration:", (endTime - startTime) / 1000, "seconds")
       console.log("[v0] Extracted resume data:")
@@ -84,9 +98,9 @@ const FileUpload: React.FC<FileUploadProps> = ({
         password: credentials.password,
         resumeData: aiJson,
       })
-      
+
       console.log("[v0] Resume data update response:", result)
-      
+
       if (result.success) {
         console.log("[v0] Resume data successfully updated in backend")
       } else {
@@ -112,7 +126,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
     if (typeof window !== "undefined") {
       const email = window.localStorage.getItem("employeeEmail") || window.localStorage.getItem("authEmail")
       const password = window.localStorage.getItem("employeePassword") || window.localStorage.getItem("authPassword")
-      
+
       if (email && password) {
         console.log("[v0] Using credentials from localStorage")
         return { email, password }
@@ -141,7 +155,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
     }
 
     try {
-      // Step 1: Upload file to storage
+      // Step 1: Upload file to storage (bucket now defaults to SkillCompass)
       const uploadResult = await uploadFile(selectedFile)
 
       if (!uploadResult.success) {
@@ -158,7 +172,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
       // Step 2: Process AI analysis and update resume data
       setAiProcessing(true)
       try {
-        await handleAiAnalysisAndDataUpdate(selectedFile, credentials)
+        await handleAiAnalysisAndDataUpdate(selectedFile, credentials, uploadResult.publicUrl)
         setUploadMessage("File uploaded and resume data processed successfully!")
       } catch (aiError) {
         console.error("[v0] AI processing failed, but file was uploaded:", aiError)

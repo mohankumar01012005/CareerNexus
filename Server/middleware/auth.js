@@ -54,29 +54,28 @@ const authMiddleware = async (req, res, next) => {
 
 const requireHR = async (req, res, next) => {
   try {
-    // Check for HR credentials in Authorization header (Basic Auth)
+    let email
+    let password
+
+    // Prefer Basic Auth, but accept body creds if header missing
     const authHeader = req.headers.authorization
-
-    if (!authHeader || !authHeader.startsWith("Basic ")) {
-      return res.status(401).json({
-        success: false,
-        message: "HR authentication required. Please provide HR credentials in Authorization header.",
-      })
+    if (authHeader && authHeader.startsWith("Basic ")) {
+      const base64Credentials = authHeader.split(" ")[1]
+      const credentials = Buffer.from(base64Credentials, "base64").toString("ascii")
+      ;[email, password] = credentials.split(":")
+    } else {
+      // Fallback to body credentials
+      email = req.body?.email
+      password = req.body?.password
     }
-
-    // Decode Basic Auth
-    const base64Credentials = authHeader.split(" ")[1]
-    const credentials = Buffer.from(base64Credentials, "base64").toString("ascii")
-    const [email, password] = credentials.split(":")
 
     if (!email || !password) {
       return res.status(401).json({
         success: false,
-        message: "Invalid authorization format",
+        message: "HR authentication required. Provide email and password in body or Basic Authorization header.",
       })
     }
 
-    // Find HR user
     const user = await User.findOne({
       email: email.toLowerCase(),
       userType: "hr",
@@ -89,7 +88,6 @@ const requireHR = async (req, res, next) => {
       })
     }
 
-    // Check if user is active
     if (!user.isActive) {
       return res.status(401).json({
         success: false,
@@ -97,7 +95,6 @@ const requireHR = async (req, res, next) => {
       })
     }
 
-    // Verify password
     const isPasswordValid = await user.comparePassword(password)
     if (!isPasswordValid) {
       return res.status(401).json({

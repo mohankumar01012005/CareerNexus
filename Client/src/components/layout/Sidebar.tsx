@@ -1,10 +1,10 @@
 // Futuristic Sidebar Navigation Component with Glassmorphism
 
 import React from 'react';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '../../contexts/AuthContext';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { cn } from '@/lib/utils';
-import { Button } from '@/components/ui/button';
+import { cn } from '../../lib/utils';
+import { Button } from '../../components/ui/button';
 import skillCompassLogo from '@/assets/skillcompass-logo.png';
 import { 
   Home, 
