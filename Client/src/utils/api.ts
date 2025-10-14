@@ -60,13 +60,25 @@ export const employeeLogin = async (email: string, password: string) => {
 
 // Create Employee API (HR only)
 export const createEmployeeApi = async (employeeData: any) => {
+  // Transform frontend field names to backend expected names
+  const backendData = {
+    fullName: employeeData.name,
+    email: employeeData.email,
+    password: employeeData.password,
+    phoneNumber: employeeData.phone,
+    department: employeeData.department,
+    role: employeeData.role,
+    joiningDate: employeeData.joinDate,
+    skills: employeeData.skills
+  }
+
   return apiRequest("/auth/employees", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       Authorization: createBasicAuthHeader(HR_CREDENTIALS.EMAIL, HR_CREDENTIALS.PASSWORD),
     },
-    body: JSON.stringify(employeeData),
+    body: JSON.stringify(backendData),
   })
 }
 
