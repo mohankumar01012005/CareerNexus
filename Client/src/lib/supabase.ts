@@ -7,21 +7,24 @@ const supabaseAnonKey =
 export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
 // File upload function
-export const uploadFile = async (file: File, bucket = "public-uploads") => {
+export const uploadFile = async (file: File, bucket = "SkillCompass") => {
   console.log("[v0] Starting file upload process...", { fileName: file.name, fileSize: file.size, bucket })
 
+  if (file.size === 0) {
+    console.warn("[v0] Warning: Selected file size is 0 bytes. Uploading will result in an empty object.")
+  }
+
   try {
-    // Generate unique filename with timestamp
     const timestamp = Date.now()
     const fileExtension = file.name.split(".").pop()
     const fileName = `resume_${timestamp}.${fileExtension}`
 
     console.log("[v0] Generated filename:", fileName)
 
-    // Upload file to Supabase storage
     const { data, error } = await supabase.storage.from(bucket).upload(fileName, file, {
       cacheControl: "3600",
       upsert: false,
+      contentType: file.type || "application/octet-stream", // Ensure correct MIME type, esp. PDFs
     })
 
     if (error) {
@@ -31,9 +34,7 @@ export const uploadFile = async (file: File, bucket = "public-uploads") => {
 
     console.log("[v0] File uploaded successfully:", data)
 
-    // Get public URL
     const { data: publicUrlData } = supabase.storage.from(bucket).getPublicUrl(fileName)
-
     console.log("[v0] Public URL generated:", publicUrlData.publicUrl)
 
     return {

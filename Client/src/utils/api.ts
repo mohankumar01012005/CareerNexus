@@ -60,16 +60,21 @@ export const employeeLogin = async (email: string, password: string) => {
 
 // Create Employee API (HR only)
 export const createEmployeeApi = async (employeeData: any) => {
-  // Transform frontend field names to backend expected names
-  const backendData = {
-    fullName: employeeData.name,
+  // Map UI form keys -> backend schema
+  const payload = {
+    fullName: employeeData.fullName ?? employeeData.name,
     email: employeeData.email,
     password: employeeData.password,
-    phoneNumber: employeeData.phone,
+    phoneNumber: employeeData.phoneNumber ?? employeeData.phone ?? "",
     department: employeeData.department,
     role: employeeData.role,
-    joiningDate: employeeData.joinDate,
-    skills: employeeData.skills
+    joiningDate: employeeData.joiningDate ?? employeeData.joinDate,
+    // Accept strings array and normalize to objects if needed
+    skills: Array.isArray(employeeData.skills)
+      ? employeeData.skills.map((s: any) =>
+          typeof s === "string" ? { name: s, proficiency: 50, category: "Frontend" } : s,
+        )
+      : undefined,
   }
 
   return apiRequest("/auth/employees", {
@@ -78,7 +83,7 @@ export const createEmployeeApi = async (employeeData: any) => {
       "Content-Type": "application/json",
       Authorization: createBasicAuthHeader(HR_CREDENTIALS.EMAIL, HR_CREDENTIALS.PASSWORD),
     },
-    body: JSON.stringify(backendData),
+    body: JSON.stringify(payload),
   })
 }
 
@@ -109,6 +114,8 @@ export const updateEmployeeResume = async (params: {
       email: params.email,
       password: params.password,
       resumeLink: params.resumeLink,
+      resume_link: params.resumeLink,
+      publicUrl: params.resumeLink,
     }),
   })
 }
@@ -150,14 +157,14 @@ export const getEmployeeResumeData = async (params: { email: string; password: s
 // Extra direct fetch-based APIs
 // ------------------------------------------------------------------
 
-export const API_BASE_URL = "https://skillupserver.vercel.app/api"
+export const API_BASE_URL = "http://localhost:5000/api"
 
 type Creds = { email: string; password: string }
 
 export async function updateEmployeeResumeDirect(
   params: Creds & { resumeLink?: string; publicUrl?: string; resume_data?: any; resumeData?: any },
 ) {
-  const resp = await fetch(`${API_BASE_URL}/employee/update-resume-link`, {
+  const resp = await fetch(`${API_CONFIG.BASE_URL}/employee/update-resume-link`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(params),
@@ -169,11 +176,11 @@ export async function updateEmployeeResumeData(params: Creds & { resumeData: any
   console.log("[v0][api] updateEmployeeResumeData: Sending request with params:", {
     email: params.email,
     hasPassword: !!params.password,
-    resumeDataKeys: Object.keys(params.resumeData || {})
+    resumeDataKeys: Object.keys(params.resumeData || {}),
   })
 
   try {
-    const resp = await fetch(`${API_BASE_URL}/employee/update-resume-data`, {
+    const resp = await fetch(`${API_CONFIG.BASE_URL}/employee/update-resume-data`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(params),

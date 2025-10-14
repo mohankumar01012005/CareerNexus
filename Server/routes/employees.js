@@ -15,12 +15,12 @@ const {
   getCareerGoalsByCredentials,
   addCareerGoalByCredentials,
   updateCareerGoalsByCredentials,
-  deleteCareerGoalByCredentials
+  deleteCareerGoalByCredentials,
 } = require("../controllers/employeeController")
 
 const router = express.Router()
 
-// Public credential-based routes (no JWT required) - MUST come first
+// Public credential-based routes (no session/JWT; email+password in body)
 router.post("/get-resume-link", getResumeLinkByCredentials)
 router.post("/get-resume-data", getResumeDataByCredentials)
 router.post("/update-resume-link", updateResumeLinkByCredentials)
@@ -30,13 +30,22 @@ router.post("/add-career-goal", addCareerGoalByCredentials)
 router.post("/update-career-goals", updateCareerGoalsByCredentials)
 router.post("/delete-career-goal", deleteCareerGoalByCredentials)
 
-// JWT protected routes - apply middleware only to these routes
-router.get("/dashboard", authMiddleware, requireEmployee, getDashboardData)
-router.put("/skills", authMiddleware, requireEmployee, updateSkills)
-router.post("/career-goals", authMiddleware, requireEmployee, addCareerGoal)
-router.post("/resume", authMiddleware, requireEmployee, updateResumeLink)
-router.post("/resume-data", authMiddleware, requireEmployee, addResumeData)
-router.get("/resume", authMiddleware, requireEmployee, getResumeLink)
-router.get("/resume-data", authMiddleware, requireEmployee, getResumeData)
+// Protect only employee-session routes after this point
+router.use(authMiddleware, requireEmployee)
+
+// Get employee dashboard
+router.get("/dashboard", getDashboardData)
+
+// Update skills
+router.put("/skills", updateSkills)
+
+// Add career goal (employee session)
+router.post("/career-goals", addCareerGoal)
+
+// Resume routes with JWT
+router.post("/resume", updateResumeLink)
+router.post("/resume-data", addResumeData)
+router.post("/resume/get", getResumeLink) // changed from GET /resume
+router.post("/resume-data/get", getResumeData) // changed from GET /resume-data
 
 module.exports = router

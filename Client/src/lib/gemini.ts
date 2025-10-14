@@ -46,6 +46,19 @@ function fileToBase64(file: File): Promise<string> {
   })
 }
 
+function guessMimeTypeFromUrl(url: string): string {
+  const lower = url.toLowerCase()
+  if (lower.endsWith(".pdf")) return "application/pdf"
+  if (lower.endsWith(".docx")) return "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+  if (lower.endsWith(".doc")) return "application/msword"
+  if (lower.endsWith(".txt")) return "text/plain"
+  return "application/octet-stream"
+}
+
+function sleep(ms: number) {
+  return new Promise((res) => setTimeout(res, ms))
+}
+
 function withDefaults(result: Partial<ResumeAnalysis>): ResumeAnalysis {
   console.log("[v0] Applying defaults to parsed result:", Object.keys(result))
   return {
@@ -112,6 +125,82 @@ function stripFences(text: string) {
   return cleaned
 }
 
+export async function analyzeResumeFromUrl(
+  url: string,
+  mimeTypeHint?: string,
+  opts?: { retries?: number; delayMs?: number },
+): Promise<ResumeAnalysis> {
+  console.log("[v0] Fetching resume from public URL for analysis:", url)
+
+  const retries = Math.max(1, opts?.retries ?? 3)
+  const baseDelay = Math.max(250, opts?.delayMs ?? 500)
+
+  const cacheBusted = new URL(url)
+  cacheBusted.searchParams.set("t", String(Date.now()))
+
+  let lastBlobSize = 0
+  let lastError: unknown = null
+
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      const resp = await fetch(cacheBusted.toString(), { mode: "cors", cache: "no-store" })
+      if (!resp.ok) {
+        throw new Error(`Failed to fetch file from URL: ${resp.status}`)
+      }
+
+      const respClone = resp.clone()
+      const blob = await resp.blob()
+      const inferredType = blob.type || mimeTypeHint || guessMimeTypeFromUrl(url)
+
+      if (blob.size > 0) {
+        const nameFromUrl = url.split("/").pop() || `resume.${inferredType.split("/")[1] || "bin"}`
+        const file = new File([blob], nameFromUrl, { type: inferredType })
+        return analyzeResumeFile(file)
+      }
+
+      console.log(`[v0] Attempt ${attempt}/${retries}: fetched blob is empty. size=${blob.size}`)
+      lastBlobSize = blob.size
+
+      // If this was the last attempt, fall back to text-based analysis using the cloned response
+      if (attempt === retries) {
+        const text = await respClone.text().catch((e) => {
+          console.warn("[v0] Fallback text read failed:", e)
+          return ""
+        })
+        return analyzeResumeText(text, url, inferredType)
+      }
+
+      await sleep(baseDelay * attempt)
+    } catch (err) {
+      lastError = err
+      console.warn(`[v0] URL analysis attempt ${attempt} failed:`, err)
+      if (attempt < retries) {
+        await sleep(baseDelay * attempt)
+      }
+    }
+  }
+
+  console.error("[v0] All URL analysis attempts failed. Last blob size:", lastBlobSize, "Last error:", lastError)
+  return analyzeResumeText("", url, mimeTypeHint || guessMimeTypeFromUrl(url))
+}
+
+async function analyzeResumeText(text: string, url: string, mimeType: string): Promise<ResumeAnalysis> {
+  console.log("[v0] Analyzing resume text from URL:", url)
+  // Implement text-based analysis logic here
+  // For now, return a default structure with error information
+  const errorResult = withDefaults({
+    summary: `Error analyzing resume from URL: ${url}`,
+    industry_insights: {
+      weaknesses: ["Resume analysis failed - please try uploading again"],
+      improvement_suggestions: ["Ensure the file is a valid resume in PDF, DOC, or DOCX format"],
+      strengths: [],
+      role_fit: [],
+    },
+  })
+
+  return errorResult
+}
+
 export async function analyzeResumeFile(file: File): Promise<ResumeAnalysis> {
   console.log("[v0] Starting resume analysis for file:", file.name, "Size:", file.size, "Type:", file.type)
 
@@ -120,6 +209,10 @@ export async function analyzeResumeFile(file: File): Promise<ResumeAnalysis> {
     console.log("[v0] Gemini model initialized successfully")
 
     const base64 = await fileToBase64(file)
+    if (!base64 || base64.length === 0) {
+      throw new Error("Selected file appears to be empty (no bytes read)")
+    }
+
     console.log("[v0] File converted to base64 successfully")
 
     // Enhanced prompt for better extraction
