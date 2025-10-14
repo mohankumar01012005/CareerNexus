@@ -48,7 +48,7 @@ const Header: React.FC<HeaderProps> = ({ title, subtitle, onMenuClick }) => {
 
         const credentials = JSON.parse(authCredentials);
         
-        const response = await fetch('http://localhost:5000/api/employee/get-resume-link', {
+        const response = await fetch('https://skillupserver.vercel.app/api/employee/get-resume-link', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
