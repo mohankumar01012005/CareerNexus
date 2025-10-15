@@ -10,6 +10,7 @@ import { Badge } from "../../components/ui/badge"
 import { ExternalLink, BookOpen, Save, CheckCircle, Clock, Award } from "lucide-react"
 import { getEmployeeCareerGoals, getEmployeeResumeData } from "../../utils/api"
 import { useNavigate } from "react-router-dom"
+import { generateAICourseRecommendations } from "../../lib/gemini"
 
 interface Course {
   title: string
@@ -266,41 +267,85 @@ const CareerRecommendations: React.FC = () => {
     fetchData()
   }, [credentials])
 
-  // Generate course recommendations based on career goals and current skills
-  const generateRecommendations = (goals: CareerGoal[], resume: ResumeData | null) => {
-    const approvedGoals = goals.filter(goal => goal.status === "approved")
-    
-    if (approvedGoals.length === 0) {
-      setCourses([])
+// In CareerRecommendations.tsx, replace the generateRecommendations function:
+
+// Replace the generateRecommendations function with:
+const generateRecommendations = async (goals: CareerGoal[], resume: ResumeData | null) => {
+  const approvedGoals = goals.filter(goal => goal.status === "approved")
+  
+  if (approvedGoals.length === 0) {
+    setCourses([])
+    return
+  }
+
+  // Get current skills from resume
+  const currentSkills = new Set([
+    ...(resume?.skills?.technical || []),
+    ...(resume?.skills?.soft || []),
+    ...(resume?.skills?.tools || []),
+    ...(resume?.skills?.domains || [])
+  ])
+
+  const currentSkillsArray = Array.from(currentSkills)
+
+  // Create cache key for top 3 recommendations
+  const cacheKey = `top_course_recommendations_${btoa(JSON.stringify({
+    skills: currentSkillsArray.sort(),
+    goals: approvedGoals.map(g => ({
+      targetRole: g.targetRole,
+      skillsRequired: g.skillsRequired.sort(),
+      priority: g.priority
+    })).sort((a, b) => a.targetRole.localeCompare(b.targetRole))
+  }))}`
+
+  // Check cache first
+  if (typeof window !== "undefined") {
+    const cached = localStorage.getItem(cacheKey)
+    if (cached) {
+      console.log("[AI] Using cached top recommendations")
+      setCourses(JSON.parse(cached))
       return
     }
-
-    const allCourses: Course[] = []
-    const currentSkills = new Set([
-      ...(resume?.skills?.technical || []),
-      ...(resume?.skills?.soft || []),
-      ...(resume?.skills?.tools || []),
-      ...(resume?.skills?.domains || [])
-    ])
-
-    // Generate 3 most relevant courses (mix of free and paid)
-    approvedGoals.forEach(goal => {
-      const skillGaps = goal.skillsRequired.filter(skill => !currentSkills.has(skill))
-      
-      if (skillGaps.length > 0 && allCourses.length < 3) {
-        // Add a mix of free and paid courses
-        if (allCourses.length === 0) {
-          allCourses.push(generateCourse(goal.targetRole, skillGaps, "Free", "Coursera"))
-        } else if (allCourses.length === 1) {
-          allCourses.push(generateCourse(goal.targetRole, skillGaps, "Paid", "Udemy"))
-        } else {
-          allCourses.push(generateCourse(goal.targetRole, skillGaps, "Free", "LinkedIn Learning"))
-        }
-      }
-    })
-
-    setCourses(allCourses)
   }
+
+  try {
+    console.log("[AI] Generating new top course recommendations...")
+    
+    const aiRecommendations = await generateAICourseRecommendations(
+      currentSkillsArray,
+      approvedGoals.map(goal => ({
+        targetRole: goal.targetRole,
+        skillsRequired: goal.skillsRequired,
+        priority: goal.priority
+      }))
+    )
+
+    // Take top 3 most relevant courses (highest readiness gain)
+    const topCourses = aiRecommendations
+      .sort((a: { readinessGain: number }, b: { readinessGain: number }) => b.readinessGain - a.readinessGain)
+      .slice(0, 3)
+      .map((rec: { title: any; provider: any; duration: any; costType: any; skillsCovered: any; enrollLink: any; rating: any; level: any }) => ({
+        title: rec.title,
+        provider: rec.provider,
+        duration: rec.duration,
+        costType: rec.costType,
+        skillsCovered: rec.skillsCovered,
+        enrollLink: rec.enrollLink,
+        rating: rec.rating,
+        level: rec.level
+      }))
+
+    // Cache the top 3 results
+    if (typeof window !== "undefined") {
+      localStorage.setItem(cacheKey, JSON.stringify(topCourses))
+    }
+
+    setCourses(topCourses)
+  } catch (error) {
+    console.error("[AI] Failed to generate top recommendations:", error)
+    setCourses([])
+  }
+}
 
   // Generate a course with valid links
   const generateCourse = (
