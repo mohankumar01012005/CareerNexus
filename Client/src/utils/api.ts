@@ -157,7 +157,7 @@ export const getEmployeeResumeData = async (params: { email: string; password: s
 // Extra direct fetch-based APIs
 // ------------------------------------------------------------------
 
-export const API_BASE_URL = "http://localhost:5000/api"
+export const API_BASE_URL = "https://skillcompassserver.vercel.app/api"
 
 type Creds = { email: string; password: string }
 
