@@ -14,6 +14,7 @@ import { updateEmployeeResume, getEmployeeResumeData } from "../../utils/api"
 import EmployeeUpload from "../../components/employee-upload"
 import AICareerChat from "../../components/ai/ai-career-chat"
 import CareerGoals from "./CareerGoals"
+import CareerRecommendations from "./CareerRecommendations"
 
 interface ResumeSkill {
   id: string
@@ -132,31 +133,6 @@ const EmployeeDashboard: React.FC = () => {
       console.error("[v0] Error handling upload completion:", e)
     }
   }
-
-  // Mock recommendations data
-  const recommendations = [
-    {
-      type: "job",
-      title: "Senior Product Manager",
-      match: 78,
-      department: "Product",
-      icon: "🎯",
-    },
-    {
-      type: "course",
-      title: "Advanced Leadership Skills",
-      match: 92,
-      provider: "LinkedIn Learning",
-      icon: "👑",
-    },
-    {
-      type: "mentor",
-      title: "Connect with Sarah Kim",
-      match: 85,
-      role: "VP of Product",
-      icon: "🤝",
-    },
-  ]
 
   const getSkillColor = (level: number) => {
     if (level >= 80) return "text-neon-green"
@@ -328,61 +304,8 @@ const EmployeeDashboard: React.FC = () => {
         {/* Career Goals Component */}
         <CareerGoals />
 
-        {/* AI Recommendations */}
-        <Card className="glass-card">
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <Award className="w-5 h-5 text-neon-orange flex-shrink-0" />
-              <span>AI Recommendations</span>
-            </CardTitle>
-            <CardDescription>Personalized opportunities for your growth</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {recommendations.map((rec, index) => (
-              <div
-                key={index}
-                className="p-4 glass-card border-border/30 tilt-3d hover:scale-[1.02] transition-transform cursor-pointer"
-                style={{ animationDelay: `${index * 0.1}s` }}
-              >
-                <div className="flex items-start justify-between mb-2 gap-2">
-                  <div className="flex items-center space-x-2 min-w-0 flex-1">
-                    <span className="text-lg flex-shrink-0">{rec.icon}</span>
-                    <div className="min-w-0 flex-1">
-                      <h4 className="font-semibold text-sm truncate">{rec.title}</h4>
-                      <p className="text-xs text-foreground-secondary truncate">
-                        {"department" in rec
-                          ? rec.department
-                          : "provider" in rec
-                            ? rec.provider
-                            : "role" in rec
-                              ? rec.role
-                              : ""}
-                      </p>
-                    </div>
-                  </div>
-                  <Badge
-                    variant="outline"
-                    className={`text-xs flex-shrink-0 ${rec.match >= 85 ? "border-neon-green text-neon-green" : "border-neon-teal text-neon-teal"}`}
-                  >
-                    {rec.match}% match
-                  </Badge>
-                </div>
-                <div className="flex space-x-2">
-                  <Button size="sm" className="btn-gradient-primary flex-1">
-                    {rec.type === "job" ? "Apply" : rec.type === "course" ? "Enroll" : "Connect"}
-                  </Button>
-                  <Button size="sm" variant="outline" className="glass-button bg-transparent">
-                    Details
-                  </Button>
-                </div>
-              </div>
-            ))}
-            <Button variant="outline" className="w-full glass-button bg-transparent">
-              <BookOpen className="w-4 h-4 mr-2" />
-              View All Recommendations
-            </Button>
-          </CardContent>
-        </Card>
+        {/* AI Recommendations Component */}
+        <CareerRecommendations />
       </div>
 
       {/* Quick Stats */}

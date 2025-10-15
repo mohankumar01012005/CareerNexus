@@ -5,11 +5,13 @@ import { TooltipProvider } from "./components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
+import { SavedCoursesProvider } from "./contexts/SavedCoursesContext";
 
 // Pages
 import Login from "./pages/Login";
 import EmployeeDashboard from "./pages/employee/EmployeeDashboard";
 import CareerCompass from "./pages/employee/CareerCompass";
+import Recommendations from "./pages/employee/Recommendations";
 import HRDashboard from "./pages/hr/HRDashboard";
 import EmployeeExplorer from "./pages/hr/EmployeeExplorer";
 import JobManagement from "./pages/hr/JobManagement";
@@ -69,7 +71,7 @@ const AppRouter: React.FC = () => {
       }>
         <Route path="dashboard" element={<EmployeeDashboard />} />
         <Route path="compass" element={<CareerCompass />} />
-        <Route path="recommendations" element={<div className="p-8 text-center glass-card"><h2 className="text-2xl font-bold text-gradient-primary">AI Recommendations</h2><p className="text-foreground-secondary mt-2">Coming soon - Personalized job and learning recommendations</p></div>} />
+        <Route path="recommendations" element={<Recommendations />} />
         <Route path="simulator" element={<div className="p-8 text-center glass-card"><h2 className="text-2xl font-bold text-gradient-primary">Career Simulator</h2><p className="text-foreground-secondary mt-2">Coming soon - Interactive career planning tool</p></div>} />
         <Route path="notifications" element={<div className="p-8 text-center glass-card"><h2 className="text-2xl font-bold text-gradient-primary">Notifications</h2><p className="text-foreground-secondary mt-2">Coming soon - Real-time updates and alerts</p></div>} />
         <Route path="profile" element={<div className="p-8 text-center glass-card"><h2 className="text-2xl font-bold text-gradient-primary">Profile Settings</h2><p className="text-foreground-secondary mt-2">Coming soon - Manage your profile and preferences</p></div>} />
@@ -114,12 +116,14 @@ const App: React.FC = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <AuthProvider>
-        <Toaster />
-        <Sonner />
-        {/* Only one BrowserRouter at the top level */}
-        <BrowserRouter>
-          <AppRouter />
-        </BrowserRouter>
+        <SavedCoursesProvider>
+          <Toaster />
+          <Sonner />
+          {/* Only one BrowserRouter at the top level */}
+          <BrowserRouter>
+            <AppRouter />
+          </BrowserRouter>
+        </SavedCoursesProvider>
       </AuthProvider>
     </TooltipProvider>
   </QueryClientProvider>
