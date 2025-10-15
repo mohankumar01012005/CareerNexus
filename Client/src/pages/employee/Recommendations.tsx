@@ -11,6 +11,7 @@ import { Input } from "../../components/ui/input"
 import { ExternalLink, BookOpen, Search, Filter, ArrowLeft, Star, Clock, Save, CheckCircle } from "lucide-react"
 import { getEmployeeCareerGoals, getEmployeeResumeData } from "../../utils/api"
 import { useNavigate } from "react-router-dom"
+import { generateAICourseRecommendations } from "../../lib/gemini"
 
 interface Course {
   title: string
@@ -258,9 +259,9 @@ const Recommendations: React.FC = () => {
       }
 
       // Generate recommendations based on approved career goals
-      const generatedCourses = generateRecommendations(
-        goalsResponse.success ? goalsResponse.careerGoals : [],
-        resumeResponse.success && resumeResponse.resume_data ? resumeResponse.resume_data[0] as ResumeData : null
+      const generatedCourses = await generateRecommendations(
+          goalsResponse.success ? goalsResponse.careerGoals : [],
+          resumeResponse.success && resumeResponse.resume_data ? resumeResponse.resume_data[0] as ResumeData : null
       )
       setCourses(generatedCourses)
       setFilteredCourses(generatedCourses)
@@ -308,74 +309,86 @@ const Recommendations: React.FC = () => {
     setFilteredCourses(result)
   }, [searchTerm, filter, providerFilter, courses, savedCourses])
 
-  // Generate course recommendations based on career goals and current skills
-  const generateRecommendations = (goals: CareerGoal[], resume: ResumeData | null): Course[] => {
-    const approvedGoals = goals.filter(goal => goal.status === "approved")
+  // In Recommendations.tsx, replace the generateRecommendations function:
+
+
+// Replace the entire generateRecommendations function with:
+const generateRecommendations = async (goals: CareerGoal[], resume: ResumeData | null): Promise<Course[]> => {
+  const approvedGoals = goals.filter(goal => goal.status === "approved")
+  
+  if (approvedGoals.length === 0) {
+    return []
+  }
+
+  // Get current skills from resume
+  const currentSkills = new Set([
+    ...(resume?.skills?.technical || []),
+    ...(resume?.skills?.soft || []),
+    ...(resume?.skills?.tools || []),
+    ...(resume?.skills?.domains || [])
+  ])
+
+  const currentSkillsArray = Array.from(currentSkills)
+
+  // Create cache key based on skills and goals for consistency
+  const cacheKey = `course_recommendations_${btoa(JSON.stringify({
+    skills: currentSkillsArray.sort(),
+    goals: approvedGoals.map(g => ({
+      targetRole: g.targetRole,
+      skillsRequired: g.skillsRequired.sort(),
+      priority: g.priority
+    })).sort((a, b) => a.targetRole.localeCompare(b.targetRole))
+  }))}`
+
+  // Check cache first
+  if (typeof window !== "undefined") {
+    const cached = localStorage.getItem(cacheKey)
+    if (cached) {
+      console.log("[AI] Using cached recommendations")
+      return JSON.parse(cached)
+    }
+  }
+
+  try {
+    console.log("[AI] Generating new course recommendations...")
     
-    if (approvedGoals.length === 0) {
-      return []
+    const aiRecommendations = await generateAICourseRecommendations(
+      currentSkillsArray,
+      approvedGoals.map(goal => ({
+        targetRole: goal.targetRole,
+        skillsRequired: goal.skillsRequired,
+        priority: goal.priority
+      }))
+    )
+
+    // Convert AI recommendations to Course format
+    const courses: Course[] = aiRecommendations.map(rec => ({
+      title: rec.title,
+      provider: rec.provider,
+      duration: rec.duration,
+      costType: rec.costType,
+      skillsCovered: rec.skillsCovered,
+      enrollLink: rec.enrollLink,
+      rating: rec.rating,
+      reviews: rec.reviews,
+      level: rec.level,
+      certificate: rec.certificate,
+      description: rec.description
+    }))
+
+    // Cache the results for consistency
+    if (typeof window !== "undefined") {
+      localStorage.setItem(cacheKey, JSON.stringify(courses))
     }
 
-    const allCourses: Course[] = []
-    const currentSkills = new Set([
-      ...(resume?.skills?.technical || []),
-      ...(resume?.skills?.soft || []),
-      ...(resume?.skills?.tools || []),
-      ...(resume?.skills?.domains || [])
-    ])
-
-    // Group goals by priority
-    const highPriorityGoals = approvedGoals.filter(goal => goal.priority === "High")
-    const mediumPriorityGoals = approvedGoals.filter(goal => goal.priority === "Medium")
-    const lowPriorityGoals = approvedGoals.filter(goal => goal.priority === "Low")
-
-    // Generate courses for high priority goals (2 free + 2 paid)
-    highPriorityGoals.forEach(goal => {
-      const skillGaps = goal.skillsRequired.filter(skill => !currentSkills.has(skill))
-      
-      if (skillGaps.length > 0) {
-        // Free courses for high priority
-        allCourses.push(
-          generateCourse(goal.targetRole, skillGaps, "Free", "Coursera"),
-          generateCourse(goal.targetRole, skillGaps, "Free", "edX")
-        )
-        // Paid courses for high priority
-        allCourses.push(
-          generateCourse(goal.targetRole, skillGaps, "Paid", "Coursera"),
-          generateCourse(goal.targetRole, skillGaps, "Paid", "Udemy")
-        )
-      }
-    })
-
-    // Generate courses for medium priority goals (1 free + 1 paid)
-    mediumPriorityGoals.forEach(goal => {
-      const skillGaps = goal.skillsRequired.filter(skill => !currentSkills.has(skill))
-      
-      if (skillGaps.length > 0) {
-        allCourses.push(
-          generateCourse(goal.targetRole, skillGaps, "Free", "LinkedIn Learning"),
-          generateCourse(goal.targetRole, skillGaps, "Paid", "Pluralsight")
-        )
-      }
-    })
-
-    // Generate courses for low priority goals (1 free + 1 paid)
-    lowPriorityGoals.forEach(goal => {
-      const skillGaps = goal.skillsRequired.filter(skill => !currentSkills.has(skill))
-      
-      if (skillGaps.length > 0) {
-        allCourses.push(
-          generateCourse(goal.targetRole, skillGaps, "Free", "Google Cloud Skills"),
-          generateCourse(goal.targetRole, skillGaps, "Paid", "Udacity")
-        )
-      }
-    })
-
-    // Remove duplicates and return
-    return allCourses.filter((course, index, self) => 
-      index === self.findIndex(c => c.title === course.title)
-    )
+    return courses
+  } catch (error) {
+    console.error("[AI] Failed to generate recommendations:", error)
+    return []
   }
+}
+
+// (Removed duplicate fetchData function declaration to resolve redeclaration error)
 
   // Generate a course with valid links and realistic data
   const generateCourse = (
