@@ -49,6 +49,35 @@ const careerGoalSchema = new mongoose.Schema({
   reviewNotes: String
 })
 
+const completionProofSchema = new mongoose.Schema({
+  file: { type: String }, // Supabase URL from frontend
+  link: { type: String }, // Direct link from frontend
+  submittedAt: { type: Date, default: Date.now }
+})
+
+const savedCourseSchema = new mongoose.Schema({
+  title: { type: String, required: true },
+  provider: { type: String, required: true },
+  duration: { type: String, required: true },
+  costType: { type: String, enum: ['Free', 'Paid'], required: true },
+  skillsCovered: [{ type: String }],
+  enrollLink: { type: String, required: true },
+  savedAt: { type: Date, default: Date.now },
+  status: { 
+    type: String, 
+    enum: ['active', 'completed', 'pending_review'], 
+    default: 'active' 
+  },
+  completionProof: completionProofSchema,
+  // Additional course details from AI
+  rating: { type: Number },
+  level: { type: String },
+  certificate: { type: Boolean },
+  description: { type: String }
+}, {
+  timestamps: true
+})
+
 const employeeSchema = new mongoose.Schema(
   {
     user: {
@@ -105,6 +134,8 @@ const employeeSchema = new mongoose.Schema(
       type: [mongoose.Schema.Types.Mixed],
       default: [],
     },
+    // New field for saved AI courses
+    savedCourses: [savedCourseSchema]
   },
   {
     timestamps: true,
@@ -121,5 +152,8 @@ employeeSchema.pre("save", function (next) {
   }
   next()
 })
+
+// Ensure an employee can only save max 3 courses and prevent duplicates within savedCourses
+savedCourseSchema.index({ employee: 1, title: 1, provider: 1 }, { unique: true });
 
 module.exports = mongoose.model("Employee", employeeSchema)
