@@ -95,7 +95,7 @@ const SaveConfirmationModal: React.FC<{
   )
 }
 
-// Completion Modal Component
+// Updated Completion Modal Component with Certificate Upload
 const CompletionModal: React.FC<{
   isOpen: boolean
   onClose: () => void
@@ -104,18 +104,43 @@ const CompletionModal: React.FC<{
 }> = ({ isOpen, onClose, onSubmit, courseTitle }) => {
   const [file, setFile] = useState<File | null>(null)
   const [link, setLink] = useState("")
+  const [isUploading, setIsUploading] = useState(false)
+  const { uploadCertificate } = useSavedCourses()
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!file && !link.trim()) {
       alert("Please provide either a file or a link as proof of completion.")
       return
     }
 
+    let fileUrl = undefined
+
+    // Upload certificate file if provided
+    if (file) {
+      try {
+        setIsUploading(true)
+        const uploadResult = await uploadCertificate(file)
+        if (uploadResult.success && uploadResult.publicUrl) {
+          fileUrl = uploadResult.publicUrl
+        } else {
+          alert("Failed to upload certificate. Please try again.")
+          setIsUploading(false)
+          return
+        }
+      } catch (error) {
+        console.error("Certificate upload error:", error)
+        alert("Failed to upload certificate. Please try again.")
+        setIsUploading(false)
+        return
+      }
+    }
+
     onSubmit({
-      file: file ? URL.createObjectURL(file) : undefined,
+      file: fileUrl,
       link: link.trim() || undefined
     })
+    setIsUploading(false)
     onClose()
     // Reset form
     setFile(null)
@@ -154,6 +179,7 @@ const CompletionModal: React.FC<{
                 accept=".pdf,.jpg,.jpeg,.png"
                 onChange={(e) => setFile(e.target.files?.[0] || null)}
                 className="w-full p-3 rounded-lg bg-background/50 border border-border focus:border-neon-teal focus:outline-none focus:ring-2 focus:ring-neon-teal/20 transition-colors"
+                disabled={isUploading}
               />
               <p className="text-xs text-foreground-secondary mt-1">Maximum file size: 10MB</p>
             </div>
@@ -170,6 +196,7 @@ const CompletionModal: React.FC<{
                 onChange={(e) => setLink(e.target.value)}
                 placeholder="https://coursera.org/verify/..."
                 className="w-full p-3 rounded-lg bg-background/50 border border-border focus:border-neon-teal focus:outline-none focus:ring-2 focus:ring-neon-teal/20 transition-colors"
+                disabled={isUploading}
               />
             </div>
 
@@ -185,15 +212,26 @@ const CompletionModal: React.FC<{
                 variant="outline"
                 onClick={onClose}
                 className="flex-1 glass-button bg-transparent"
+                disabled={isUploading}
               >
                 Cancel
               </Button>
               <Button
                 type="submit"
                 className="flex-1 bg-green-500 hover:bg-green-600 text-white"
+                disabled={isUploading}
               >
-                <CheckCircle className="w-4 h-4 mr-2" />
-                Submit for Review
+                {isUploading ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    Uploading...
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle className="w-4 h-4 mr-2" />
+                    Submit for Review
+                  </>
+                )}
               </Button>
             </div>
           </form>
@@ -267,142 +305,81 @@ const CareerRecommendations: React.FC = () => {
     fetchData()
   }, [credentials])
 
-// In CareerRecommendations.tsx, replace the generateRecommendations function:
-
-// Replace the generateRecommendations function with:
-const generateRecommendations = async (goals: CareerGoal[], resume: ResumeData | null) => {
-  const approvedGoals = goals.filter(goal => goal.status === "approved")
-  
-  if (approvedGoals.length === 0) {
-    setCourses([])
-    return
-  }
-
-  // Get current skills from resume
-  const currentSkills = new Set([
-    ...(resume?.skills?.technical || []),
-    ...(resume?.skills?.soft || []),
-    ...(resume?.skills?.tools || []),
-    ...(resume?.skills?.domains || [])
-  ])
-
-  const currentSkillsArray = Array.from(currentSkills)
-
-  // Create cache key for top 3 recommendations
-  const cacheKey = `top_course_recommendations_${btoa(JSON.stringify({
-    skills: currentSkillsArray.sort(),
-    goals: approvedGoals.map(g => ({
-      targetRole: g.targetRole,
-      skillsRequired: g.skillsRequired.sort(),
-      priority: g.priority
-    })).sort((a, b) => a.targetRole.localeCompare(b.targetRole))
-  }))}`
-
-  // Check cache first
-  if (typeof window !== "undefined") {
-    const cached = localStorage.getItem(cacheKey)
-    if (cached) {
-      console.log("[AI] Using cached top recommendations")
-      setCourses(JSON.parse(cached))
+  // Generate recommendations based on career goals and current skills
+  const generateRecommendations = async (goals: CareerGoal[], resume: ResumeData | null) => {
+    const approvedGoals = goals.filter(goal => goal.status === "approved")
+    
+    if (approvedGoals.length === 0) {
+      setCourses([])
       return
     }
-  }
 
-  try {
-    console.log("[AI] Generating new top course recommendations...")
-    
-    const aiRecommendations = await generateAICourseRecommendations(
-      currentSkillsArray,
-      approvedGoals.map(goal => ({
-        targetRole: goal.targetRole,
-        skillsRequired: goal.skillsRequired,
-        priority: goal.priority
-      }))
-    )
+    // Get current skills from resume
+    const currentSkills = new Set([
+      ...(resume?.skills?.technical || []),
+      ...(resume?.skills?.soft || []),
+      ...(resume?.skills?.tools || []),
+      ...(resume?.skills?.domains || [])
+    ])
 
-    // Take top 3 most relevant courses (highest readiness gain)
-    const topCourses = aiRecommendations
-      .sort((a: { readinessGain: number }, b: { readinessGain: number }) => b.readinessGain - a.readinessGain)
-      .slice(0, 3)
-      .map((rec: { title: any; provider: any; duration: any; costType: any; skillsCovered: any; enrollLink: any; rating: any; level: any }) => ({
-        title: rec.title,
-        provider: rec.provider,
-        duration: rec.duration,
-        costType: rec.costType,
-        skillsCovered: rec.skillsCovered,
-        enrollLink: rec.enrollLink,
-        rating: rec.rating,
-        level: rec.level
-      }))
+    const currentSkillsArray = Array.from(currentSkills)
 
-    // Cache the top 3 results
+    // Create cache key for top 3 recommendations
+    const cacheKey = `top_course_recommendations_${btoa(JSON.stringify({
+      skills: currentSkillsArray.sort(),
+      goals: approvedGoals.map(g => ({
+        targetRole: g.targetRole,
+        skillsRequired: g.skillsRequired.sort(),
+        priority: g.priority
+      })).sort((a, b) => a.targetRole.localeCompare(b.targetRole))
+    }))}`
+
+    // Check cache first
     if (typeof window !== "undefined") {
-      localStorage.setItem(cacheKey, JSON.stringify(topCourses))
-    }
-
-    setCourses(topCourses)
-  } catch (error) {
-    console.error("[AI] Failed to generate top recommendations:", error)
-    setCourses([])
-  }
-}
-
-  // Generate a course with valid links
-  const generateCourse = (
-    targetRole: string, 
-    skillGaps: string[], 
-    costType: "Free" | "Paid", 
-    provider: string
-  ): Course => {
-    const skillsToCover = skillGaps.slice(0, 3)
-    
-    const courseTemplates: { [key: string]: { [key: string]: any } } = {
-      "Coursera": {
-        free: {
-          title: `Introduction to ${targetRole} Skills`,
-          link: "https://www.coursera.org/learn/professional-skills",
-          duration: "4 weeks",
-          rating: 4.7,
-          level: "Beginner"
-        }
-      },
-      "Udemy": {
-        paid: {
-          title: `The Complete ${targetRole} Course`,
-          link: "https://www.udemy.com/course/professional-career-development/",
-          duration: "35 hours",
-          rating: 4.7,
-          level: "Intermediate"
-        }
-      },
-      "LinkedIn Learning": {
-        free: {
-          title: `${targetRole} Essential Training`,
-          link: "https://www.linkedin.com/learning/paths/develop-your-career",
-          duration: "6 hours",
-          rating: 4.5,
-          level: "Beginner"
-        }
+      const cached = localStorage.getItem(cacheKey)
+      if (cached) {
+        console.log("[AI] Using cached top recommendations")
+        setCourses(JSON.parse(cached))
+        return
       }
     }
 
-    const template = courseTemplates[provider]?.[costType.toLowerCase()] || {
-      title: `${targetRole} ${costType} Course`,
-      link: `https://www.${provider.toLowerCase().replace(/\s+/g, '')}.com/courses`,
-      duration: "6 weeks",
-      rating: 4.5,
-      level: "Intermediate"
-    }
+    try {
+      console.log("[AI] Generating new top course recommendations...")
+      
+      const aiRecommendations = await generateAICourseRecommendations(
+        currentSkillsArray,
+        approvedGoals.map(goal => ({
+          targetRole: goal.targetRole,
+          skillsRequired: goal.skillsRequired,
+          priority: goal.priority
+        }))
+      )
 
-    return {
-      title: template.title,
-      provider,
-      duration: template.duration,
-      costType,
-      skillsCovered: skillsToCover,
-      enrollLink: template.link,
-      rating: template.rating,
-      level: template.level
+      // Take top 3 most relevant courses (highest readiness gain)
+      const topCourses = aiRecommendations
+        .sort((a: { readinessGain: number }, b: { readinessGain: number }) => b.readinessGain - a.readinessGain)
+        .slice(0, 3)
+        .map((rec: { title: any; provider: any; duration: any; costType: any; skillsCovered: any; enrollLink: any; rating: any; level: any }) => ({
+          title: rec.title,
+          provider: rec.provider,
+          duration: rec.duration,
+          costType: rec.costType,
+          skillsCovered: rec.skillsCovered,
+          enrollLink: rec.enrollLink,
+          rating: rec.rating,
+          level: rec.level
+        }))
+
+      // Cache the top 3 results
+      if (typeof window !== "undefined") {
+        localStorage.setItem(cacheKey, JSON.stringify(topCourses))
+      }
+
+      setCourses(topCourses)
+    } catch (error) {
+      console.error("[AI] Failed to generate top recommendations:", error)
+      setCourses([])
     }
   }
 
@@ -413,11 +390,12 @@ const generateRecommendations = async (goals: CareerGoal[], resume: ResumeData |
 
   const confirmSaveCourse = () => {
     if (selectedCourse) {
-      const success = saveCourse(selectedCourse)
-      if (success) {
-        setSaveModalOpen(false)
-        setSelectedCourse(null)
-      }
+      saveCourse(selectedCourse).then(success => {
+        if (success) {
+          setSaveModalOpen(false)
+          setSelectedCourse(null)
+        }
+      })
     }
   }
 
@@ -428,7 +406,7 @@ const generateRecommendations = async (goals: CareerGoal[], resume: ResumeData |
 
   const confirmMarkAsCompleted = (proof: { file?: string; link?: string }) => {
     if (selectedCourse) {
-      // Find the saved course by title and provider (since we don't have ID in the original course)
+      // Find the saved course by title and provider
       const savedCourse = savedCourses.find(
         sc => sc.title === selectedCourse.title && sc.provider === selectedCourse.provider
       )
