@@ -41,7 +41,9 @@ setTimeout(() => {
 // ✅ API Routes
 app.use("/api/auth", require("./routes/auth"));
 app.use("/api/employee", require("./routes/employees"));
+app.use("/api/employee", require("./routes/savedCourses")); // Employee saved courses routes
 app.use("/api/hr", require("./routes/hr"));
+app.use("/api/hr", require("./routes/hrSavedCourses")); // HR saved courses routes
 
 // ✅ Default home route (use GET to avoid overriding APIs)
 app.get("/", (req, res) => {
