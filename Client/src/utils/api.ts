@@ -3,6 +3,7 @@
 // API Utility Functions
 
 import { API_CONFIG, HR_CREDENTIALS, createBasicAuthHeader, type ApiResponse } from "../config/api"
+import { supabase } from "../lib/supabase"
 
 // Generic API request function
 export const apiRequest = async <T = any>(endpoint: string, options: RequestInit = {}): Promise<ApiResponse<T>> => {
@@ -431,5 +432,249 @@ export const getCareerGoalsStatsHR = async () => {
   } catch (error) {
     console.error("[HR][api] getCareerGoalsStatsHR: error", error)
     throw error
+  }
+}
+
+// Course Management APIs
+export const saveCourseApi = async (params: {
+  email: string;
+  password: string;
+  course: any;
+}) => {
+  const endpoint = `http://localhost:5000/api/employee/save-course`;
+  console.log("[api] saveCourseApi: request", {
+    endpoint,
+    email: params.email,
+    courseTitle: params.course.title,
+  });
+
+  try {
+    const resp = await fetch(endpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(params),
+    });
+
+    const result = await resp.json();
+    console.log("[api] saveCourseApi: response", result);
+    return result;
+  } catch (error) {
+    console.error("[api] saveCourseApi: error", error);
+    throw error;
+  }
+};
+
+export const getSavedCoursesApi = async (params: {
+  email: string;
+  password: string;
+}) => {
+  const endpoint = `http://localhost:5000/api/employee/my-saved-courses`;
+  console.log("[api] getSavedCoursesApi: request", {
+    endpoint,
+    email: params.email,
+  });
+
+  try {
+    const resp = await fetch(endpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(params),
+    });
+
+    const result = await resp.json();
+    console.log("[api] getSavedCoursesApi: response", result);
+    return result;
+  } catch (error) {
+    console.error("[api] getSavedCoursesApi: error", error);
+    throw error;
+  }
+};
+
+export const completeCourseApi = async (params: {
+  email: string;
+  password: string;
+  courseId: string;
+  proof: { file?: string; link?: string };
+}) => {
+  const endpoint = `http://localhost:5000/api/employee/complete-course`;
+  console.log("[api] completeCourseApi: request", {
+    endpoint,
+    email: params.email,
+    courseId: params.courseId,
+  });
+
+  try {
+    const resp = await fetch(endpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(params),
+    });
+
+    const result = await resp.json();
+    console.log("[api] completeCourseApi: response", result);
+    return result;
+  } catch (error) {
+    console.error("[api] completeCourseApi: error", error);
+    throw error;
+  }
+};
+
+export const deleteCourseApi = async (params: {
+  email: string;
+  password: string;
+  courseId: string;
+}) => {
+  const endpoint = `http://localhost:5000/api/employee/delete-course`;
+  console.log("[api] deleteCourseApi: request", {
+    endpoint,
+    email: params.email,
+    courseId: params.courseId,
+  });
+
+  try {
+    const resp = await fetch(endpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(params),
+    });
+
+    const result = await resp.json();
+    console.log("[api] deleteCourseApi: response", result);
+    return result;
+  } catch (error) {
+    console.error("[api] deleteCourseApi: error", error);
+    throw error;
+  }
+};
+
+// HR Course Management APIs
+export const getEmployeeSavedCoursesHR = async (employeeEmail: string) => {
+  const endpoint = `http://localhost:5000/api/hr/get-saved-courses`;
+  console.log("[HR][api] getEmployeeSavedCoursesHR: request", {
+    endpoint,
+    employeeEmail,
+  });
+
+  try {
+    const resp = await fetch(endpoint, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: createBasicAuthHeader(HR_CREDENTIALS.EMAIL, HR_CREDENTIALS.PASSWORD),
+      },
+      body: JSON.stringify({ employeeEmail }),
+    });
+
+    if (!resp.ok) {
+      throw new Error(`HTTP error! status: ${resp.status}`);
+    }
+
+    const result = await resp.json();
+    console.log("[HR][api] getEmployeeSavedCoursesHR: response", result);
+    return result;
+  } catch (error) {
+    console.error("[HR][api] getEmployeeSavedCoursesHR: error", error);
+    throw error;
+  }
+};
+
+// Certificate Upload Function (similar to resume upload)
+export const uploadCertificate = async (file: File, bucket = "SkillCompass") => {
+  console.log("[api] Starting certificate upload process...", { 
+    fileName: file.name, 
+    fileSize: file.size, 
+    bucket 
+  });
+
+  try {
+    const timestamp = Date.now();
+    const fileExtension = file.name.split(".").pop();
+    const fileName = `certificate_${timestamp}.${fileExtension}`;
+
+    console.log("[api] Generated certificate filename:", fileName);
+
+    const { data, error } = await supabase.storage.from(bucket).upload(fileName, file, {
+      cacheControl: "3600",
+      upsert: false,
+      contentType: file.type || "application/octet-stream",
+    });
+
+    if (error) {
+      console.error("[api] Certificate upload error:", error);
+      throw error;
+    }
+
+    console.log("[api] Certificate uploaded successfully:", data);
+
+    const { data: publicUrlData } = supabase.storage.from(bucket).getPublicUrl(fileName);
+    console.log("[api] Certificate public URL generated:", publicUrlData.publicUrl);
+
+    return {
+      success: true,
+      fileName,
+      publicUrl: publicUrlData.publicUrl,
+      path: data.path,
+    };
+  } catch (error) {
+    console.error("[api] Certificate upload failed:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error occurred",
+    };
+  }
+};
+
+// utils/api.ts (add these functions)
+
+
+// HR: Get pending course completions
+export const getPendingCourseCompletions = async (): Promise<{
+  success: boolean
+  pendingCompletions: any[]
+  count: number
+}> => {
+  try {
+    const response = await fetch('/api/hr/pending-course-completions', {
+      headers: {
+        Authorization: `Basic ${btoa(`${process.env.HR_EMAIL}:${process.env.HR_PASSWORD}`)}`,
+      },
+    })
+
+    if (!response.ok) {
+      throw new Error('Failed to fetch pending course completions')
+    }
+
+    return await response.json()
+  } catch (error) {
+    console.error('Error fetching pending course completions:', error)
+    return { success: false, pendingCompletions: [], count: 0 }
+  }
+}
+
+// HR: Update course completion status
+export const updateCourseCompletionStatus = async (data: {
+  courseId: string
+  employeeId: string
+  status: 'completed' | 'active'
+  notes?: string
+}): Promise<{ success: boolean; message?: string }> => {
+  try {
+    const response = await fetch('/api/hr/update-course-status', {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Basic ${btoa(`${process.env.HR_EMAIL}:${process.env.HR_PASSWORD}`)}`,
+      },
+      body: JSON.stringify(data),
+    })
+
+    if (!response.ok) {
+      throw new Error('Failed to update course status')
+    }
+
+    return await response.json()
+  } catch (error) {
+    console.error('Error updating course status:', error)
+    return { success: false, message: 'Failed to update course status' }
   }
 }
