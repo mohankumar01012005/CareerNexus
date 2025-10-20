@@ -94,7 +94,9 @@ router.post('/get-saved-courses', verifyHRForGet, async (req, res) => {
         rating: course.rating,
         level: course.level,
         certificate: course.certificate,
-        description: course.description
+        description: course.description,
+        resubmissionCount: course.resubmissionCount || 0,
+        reviewNotes: course.reviewNotes
       })),
       count: savedCourses.length,
       employeeInfo: {
@@ -144,6 +146,8 @@ router.get('/pending-course-completions', verifyHRForGet, async (req, res) => {
             level: course.level,
             certificate: course.certificate,
             description: course.description,
+            resubmissionCount: course.resubmissionCount || 0,
+            reviewNotes: course.reviewNotes,
             employeeInfo: {
               fullName: employee.fullName,
               email: employee.user.email,
@@ -203,6 +207,8 @@ router.get('/all-saved-courses', verifyHRForGet, async (req, res) => {
           level: course.level,
           certificate: course.certificate,
           description: course.description,
+          resubmissionCount: course.resubmissionCount || 0,
+          reviewNotes: course.reviewNotes,
           employeeInfo: {
             fullName: employee.fullName,
             email: employee.user.email,
@@ -237,10 +243,10 @@ router.get('/all-saved-courses', verifyHRForGet, async (req, res) => {
   }
 });
 
-// Update course completion status (HR only)
+// Update course completion status (HR only) - UPDATED with resubmission logic
 router.put('/update-course-status', verifyHRForGet, async (req, res) => {
   try {
-    const { courseId, employeeId, status, notes } = req.body;
+    const { courseId, employeeId, status, notes, resubmissionCount = 0 } = req.body;
 
     if (!courseId || !employeeId || !status) {
       return res.status(400).json({
@@ -249,8 +255,9 @@ router.put('/update-course-status', verifyHRForGet, async (req, res) => {
       });
     }
 
-    console.log('Updating course status:', { courseId, employeeId, status });
+    console.log('HR updating course status:', { courseId, employeeId, status, notes, resubmissionCount });
 
+    // Find the employee
     const employee = await Employee.findById(employeeId);
     if (!employee) {
       return res.status(404).json({
@@ -259,35 +266,48 @@ router.put('/update-course-status', verifyHRForGet, async (req, res) => {
       });
     }
 
+    // Find the course in the employee's saved courses
     const course = employee.savedCourses.id(courseId);
     if (!course) {
       return res.status(404).json({
         success: false,
-        message: 'Course not found'
+        message: 'Course not found in employee\'s saved courses'
       });
     }
 
-    // Update course status
+    // Update course status and handle resubmission logic
     course.status = status;
-    
-    // Add review notes if provided
-    if (notes) {
-      course.reviewNotes = notes;
-      course.reviewedAt = new Date();
+    course.reviewNotes = notes || '';
+
+    if (status === 'active') {
+      // Rejected - increment resubmission count
+      course.resubmissionCount = (course.resubmissionCount || 0) + 1;
+      
+      // Check if max resubmission attempts reached
+      if (course.resubmissionCount >= 3) {
+        // Auto-delete the course after 3 rejections
+        employee.savedCourses.pull(courseId);
+        await employee.save();
+        
+        return res.json({
+          success: true,
+          message: 'Course rejected and automatically deleted after 3 failed attempts',
+          courseDeleted: true
+        });
+      }
+    } else if (status === 'completed') {
+      // Approved - reset resubmission count
+      course.resubmissionCount = 0;
+      course.completedAt = new Date();
     }
 
     await employee.save();
 
     res.json({
       success: true,
-      message: `Course status updated to ${status}`,
-      course: {
-        id: course._id.toString(),
-        title: course.title,
-        status: course.status,
-        reviewNotes: course.reviewNotes,
-        reviewedAt: course.reviewedAt
-      }
+      message: `Course ${status === 'completed' ? 'approved' : 'rejected'} successfully`,
+      courseDeleted: false,
+      resubmissionCount: course.resubmissionCount
     });
   } catch (error) {
     console.error('Error updating course status:', error);

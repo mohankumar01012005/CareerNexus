@@ -31,11 +31,13 @@ interface SavedCourse {
     file?: string
     link?: string
   }
+  resubmissionCount?: number
+  reviewNotes?: string
 }
 
 interface SavedCoursesContextType {
   savedCourses: SavedCourse[]
-  saveCourse: (course: Omit<SavedCourse, "id" | "status" | "savedAt">) => Promise<boolean>
+  saveCourse: (course: Omit<SavedCourse, "id" | "status" | "savedAt" | "resubmissionCount" | "reviewNotes">) => Promise<boolean>
   markAsCompleted: (courseId: string, proof: { file?: string; link?: string }) => void
   deleteCourse: (courseId: string) => void
   canSaveMore: boolean
@@ -81,8 +83,12 @@ export const SavedCoursesProvider: React.FC<SavedCoursesProviderProps> = ({ chil
       })
 
       if (response.success && response.savedCourses) {
-        setSavedCourses(response.savedCourses)
-        console.log(`Loaded ${response.savedCourses.length} saved courses from backend`)
+        // Sort by saved date (newest first) to ensure consistent display order
+        const sortedCourses = response.savedCourses.sort((a: SavedCourse, b: SavedCourse) => 
+          new Date(b.savedAt).getTime() - new Date(a.savedAt).getTime()
+        )
+        setSavedCourses(sortedCourses)
+        console.log(`Loaded ${sortedCourses.length} saved courses from backend`)
       } else {
         console.log("No saved courses found or error loading")
         setSavedCourses([])
@@ -104,7 +110,7 @@ export const SavedCoursesProvider: React.FC<SavedCoursesProviderProps> = ({ chil
     loadSavedCourses()
   }, [credentials])
 
-  const saveCourse = async (courseData: Omit<SavedCourse, "id" | "status" | "savedAt">): Promise<boolean> => {
+  const saveCourse = async (courseData: Omit<SavedCourse, "id" | "status" | "savedAt" | "resubmissionCount" | "reviewNotes">): Promise<boolean> => {
     if (!credentials?.email || !credentials?.password) {
       toast({
         title: "❌ Authentication Required",
@@ -126,7 +132,7 @@ export const SavedCoursesProvider: React.FC<SavedCoursesProviderProps> = ({ chil
           title: "✅ Course Saved",
           description: `${courseData.title} has been saved to your profile`,
         })
-        // Refresh the saved courses list
+        // Refresh the saved courses list to ensure consistency
         await loadSavedCourses()
         return true
       } else {

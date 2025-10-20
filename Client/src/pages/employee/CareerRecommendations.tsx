@@ -7,7 +7,7 @@ import { useSavedCourses } from "../../contexts/SavedCoursesContext"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../components/ui/card"
 import { Button } from "../../components/ui/button"
 import { Badge } from "../../components/ui/badge"
-import { ExternalLink, BookOpen, Save, CheckCircle, Clock, Award } from "lucide-react"
+import { ExternalLink, BookOpen, Save, CheckCircle, Clock, Award, AlertCircle } from "lucide-react"
 import { getEmployeeCareerGoals, getEmployeeResumeData } from "../../utils/api"
 import { useNavigate } from "react-router-dom"
 import { generateAICourseRecommendations } from "../../lib/gemini"
@@ -95,13 +95,15 @@ const SaveConfirmationModal: React.FC<{
   )
 }
 
-// Updated Completion Modal Component with Certificate Upload
+// Updated Completion Modal Component with Certificate Upload and resubmission info
 const CompletionModal: React.FC<{
   isOpen: boolean
   onClose: () => void
   onSubmit: (proof: { file?: string; link?: string }) => void
   courseTitle: string
-}> = ({ isOpen, onClose, onSubmit, courseTitle }) => {
+  resubmissionCount?: number
+  reviewNotes?: string
+}> = ({ isOpen, onClose, onSubmit, courseTitle, resubmissionCount = 0, reviewNotes }) => {
   const [file, setFile] = useState<File | null>(null)
   const [link, setLink] = useState("")
   const [isUploading, setIsUploading] = useState(false)
@@ -149,6 +151,8 @@ const CompletionModal: React.FC<{
 
   if (!isOpen) return null
 
+  const attemptsLeft = 3 - resubmissionCount
+
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="glass-card rounded-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
@@ -168,6 +172,27 @@ const CompletionModal: React.FC<{
           <div className="mb-4 p-3 bg-yellow-500/20 border border-yellow-500/30 rounded-lg text-yellow-400 text-sm">
             <p><strong>Important:</strong> You need to provide proof of course completion. This will be manually evaluated by HR.</p>
           </div>
+
+          {/* Resubmission Info */}
+          {resubmissionCount > 0 && (
+            <div className="mb-4 p-3 bg-blue-500/20 border border-blue-500/30 rounded-lg">
+              <div className="flex items-center space-x-2 mb-2">
+                <AlertCircle className="w-4 h-4 text-blue-400" />
+                <p className="text-sm font-semibold text-blue-400">
+                  Resubmission {resubmissionCount} of 3
+                </p>
+              </div>
+              <p className="text-xs text-blue-400 mb-2">
+                You have {attemptsLeft} attempt{attemptsLeft !== 1 ? 's' : ''} left to resubmit.
+              </p>
+              {reviewNotes && (
+                <div className="mt-2 p-2 bg-blue-500/10 rounded text-xs">
+                  <p className="font-semibold text-blue-300">Previous feedback:</p>
+                  <p className="text-blue-400 mt-1">{reviewNotes}</p>
+                </div>
+              )}
+            </div>
+          )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
@@ -246,7 +271,7 @@ const CareerRecommendations: React.FC = () => {
     credentials: { email: string; password: string } | null
   }
   
-  const { savedCourses, saveCourse, markAsCompleted, canSaveMore, savedCount } = useSavedCourses()
+  const { savedCourses, saveCourse, markAsCompleted, canSaveMore, savedCount, refreshSavedCourses } = useSavedCourses()
   const navigate = useNavigate()
   const [careerGoals, setCareerGoals] = useState<CareerGoal[]>([])
   const [resumeData, setResumeData] = useState<ResumeData | null>(null)
@@ -303,6 +328,8 @@ const CareerRecommendations: React.FC = () => {
 
   useEffect(() => {
     fetchData()
+    // Refresh saved courses when component mounts to ensure consistency
+    refreshSavedCourses()
   }, [credentials])
 
   // Generate recommendations based on career goals and current skills
@@ -394,6 +421,8 @@ const CareerRecommendations: React.FC = () => {
         if (success) {
           setSaveModalOpen(false)
           setSelectedCourse(null)
+          // Refresh to ensure consistency across components
+          refreshSavedCourses()
         }
       })
     }
@@ -444,6 +473,11 @@ const CareerRecommendations: React.FC = () => {
   const getSavedCourseStatus = (course: Course) => {
     const savedCourse = savedCourses.find(sc => sc.title === course.title && sc.provider === course.provider)
     return savedCourse?.status
+  }
+
+  const getSavedCourseDetails = (course: Course | null) => {
+    if (!course) return undefined
+    return savedCourses.find(sc => sc.title === course.title && sc.provider === course.provider)
   }
 
   if (isLoading) {
@@ -517,8 +551,11 @@ const CareerRecommendations: React.FC = () => {
           ) : (
             courses.map((course, index) => {
               const isSaved = isCourseSaved(course)
-              const savedStatus = getSavedCourseStatus(course)
+              const savedCourse = getSavedCourseDetails(course)
+              const savedStatus = savedCourse?.status
               const isSaveDisabled = !canSaveMore && !isSaved
+              const resubmissionCount = savedCourse?.resubmissionCount || 0
+              const reviewNotes = savedCourse?.reviewNotes
 
               return (
                 <div
@@ -549,9 +586,20 @@ const CareerRecommendations: React.FC = () => {
                           Pending
                         </Badge>
                       )}
-                      {isSaved && savedStatus === "active" && (
+                      {savedStatus === "completed" && (
                         <Badge variant="outline" className="text-xs bg-green-500/20 text-green-400 border-green-500/30">
+                          <CheckCircle className="w-3 h-3 mr-1" />
+                          Completed
+                        </Badge>
+                      )}
+                      {isSaved && savedStatus === "active" && (
+                        <Badge variant="outline" className="text-xs bg-blue-500/20 text-blue-400 border-blue-500/30">
                           Saved
+                        </Badge>
+                      )}
+                      {resubmissionCount > 0 && savedStatus === "active" && (
+                        <Badge variant="outline" className="text-xs bg-orange-500/20 text-orange-400 border-orange-500/30">
+                          Attempt {resubmissionCount}/3
                         </Badge>
                       )}
                     </div>
@@ -564,6 +612,14 @@ const CareerRecommendations: React.FC = () => {
                       </Badge>
                     ))}
                   </div>
+
+                  {/* Show review notes if available and course was rejected */}
+                  {reviewNotes && savedStatus === "active" && resubmissionCount > 0 && (
+                    <div className="mb-3 p-2 bg-blue-500/10 border border-blue-500/20 rounded text-xs">
+                      <p className="font-semibold text-blue-300">HR Feedback:</p>
+                      <p className="text-blue-400 mt-1">{reviewNotes}</p>
+                    </div>
+                  )}
 
                   <div className="flex space-x-2">
                     <Button 
@@ -592,9 +648,10 @@ const CareerRecommendations: React.FC = () => {
                         size="sm" 
                         className="bg-green-500 hover:bg-green-600 text-white"
                         onClick={() => handleMarkAsCompleted(course)}
+                        disabled={resubmissionCount >= 3}
                       >
                         <CheckCircle className="w-3 h-3 mr-1" />
-                        Mark Completed
+                        {resubmissionCount > 0 ? 'Resubmit' : 'Mark Completed'}
                       </Button>
                     ) : null}
                   </div>
@@ -631,6 +688,8 @@ const CareerRecommendations: React.FC = () => {
         onClose={() => setCompletionModalOpen(false)}
         onSubmit={confirmMarkAsCompleted}
         courseTitle={selectedCourse?.title || ""}
+        resubmissionCount={getSavedCourseDetails(selectedCourse)?.resubmissionCount}
+        reviewNotes={getSavedCourseDetails(selectedCourse)?.reviewNotes}
       />
     </>
   )
