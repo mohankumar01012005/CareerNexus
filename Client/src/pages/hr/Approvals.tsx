@@ -83,6 +83,8 @@ interface PendingCourseCompletion {
     role: string
     employeeId: string
   }
+  resubmissionCount?: number
+  reviewNotes?: string
 }
 
 const Approvals: React.FC = () => {
@@ -162,6 +164,16 @@ const Approvals: React.FC = () => {
   // Update course completion status
   const updateCourseCompletionStatus = async (course: PendingCourseCompletion, status: 'completed' | 'active', notes?: string) => {
     try {
+      // Validate that notes are provided when rejecting
+      if (status === 'active' && (!notes || notes.trim() === '')) {
+        toast({
+          title: "❌ Review Notes Required",
+          description: "You must provide review notes when rejecting a course completion.",
+          variant: "destructive",
+        });
+        return;
+      }
+
       const credentials = getHRCredentials();
       const authHeader = createBasicAuthHeader(credentials.email, credentials.password);
 
@@ -175,7 +187,8 @@ const Approvals: React.FC = () => {
           courseId: course.id,
           employeeId: course.employeeInfo.employeeId,
           status,
-          notes: notes || ''
+          notes: notes || '',
+          resubmissionCount: course.resubmissionCount || 0
         })
       });
 
@@ -351,6 +364,20 @@ const Approvals: React.FC = () => {
       case 'advanced': return 'text-red-400 bg-red-400/10 border-red-400/30';
       default: return 'text-foreground-secondary bg-muted';
     }
+  };
+
+  const getResubmissionInfo = (course: PendingCourseCompletion) => {
+    const count = course.resubmissionCount || 0;
+    const attemptsLeft = 3 - count;
+    
+    if (count === 0) return null;
+    
+    return {
+      count,
+      attemptsLeft,
+      isFinalAttempt: count >= 2,
+      shouldAutoDelete: count >= 3
+    };
   };
 
   return (
@@ -614,6 +641,7 @@ const Approvals: React.FC = () => {
               ) : (
                 pendingCourseCompletions.map((course, index) => {
                   const daysSinceSubmission = getDaysSinceSubmission(course.completionProof.submittedAt);
+                  const resubmissionInfo = getResubmissionInfo(course);
                   
                   return (
                     <div 
@@ -652,6 +680,17 @@ const Approvals: React.FC = () => {
                                 {daysSinceSubmission} days
                               </span>
                             </div>
+                            {resubmissionInfo && (
+                              <div className="flex justify-between items-center">
+                                <span className="text-foreground-secondary">Resubmission:</span>
+                                <span className={`font-semibold ${
+                                  resubmissionInfo.shouldAutoDelete ? 'text-red-400' : 
+                                  resubmissionInfo.isFinalAttempt ? 'text-orange-400' : 'text-blue-400'
+                                }`}>
+                                  {resubmissionInfo.count} of 3
+                                </span>
+                              </div>
+                            )}
                           </div>
                         </div>
 
@@ -676,6 +715,16 @@ const Approvals: React.FC = () => {
                                 {course.certificate && (
                                   <Badge variant="outline" className="bg-neon-green/10 text-neon-green border-neon-green/30">
                                     Certificate
+                                  </Badge>
+                                )}
+                                {resubmissionInfo && (
+                                  <Badge variant="outline" className={
+                                    resubmissionInfo.shouldAutoDelete ? 'bg-red-500/10 text-red-400 border-red-500/30' :
+                                    resubmissionInfo.isFinalAttempt ? 'bg-orange-500/10 text-orange-400 border-orange-500/30' :
+                                    'bg-blue-500/10 text-blue-400 border-blue-500/30'
+                                  }>
+                                    {resubmissionInfo.shouldAutoDelete ? 'Final Attempt' :
+                                     resubmissionInfo.isFinalAttempt ? 'Last Chance' : 'Resubmission'}
                                   </Badge>
                                 )}
                               </div>
@@ -706,6 +755,19 @@ const Approvals: React.FC = () => {
                                   </Badge>
                                 ))}
                               </div>
+                            </div>
+                          )}
+
+                          {/* Resubmission Warning */}
+                          {resubmissionInfo?.shouldAutoDelete && (
+                            <div className="p-3 bg-red-500/20 border border-red-500/30 rounded-lg">
+                              <div className="flex items-center space-x-2">
+                                <AlertCircle className="w-4 h-4 text-red-400" />
+                                <p className="text-sm font-semibold text-red-400">Final Attempt</p>
+                              </div>
+                              <p className="text-xs text-red-400 mt-1">
+                                If rejected this time, the course will be automatically deleted and the employee will need to save it again.
+                              </p>
                             </div>
                           )}
 
@@ -1007,6 +1069,24 @@ const Approvals: React.FC = () => {
                     </div>
                   )}
 
+                  {/* Resubmission Info */}
+                  {selectedCourse.resubmissionCount && selectedCourse.resubmissionCount > 0 && (
+                    <div className="p-3 bg-blue-500/20 border border-blue-500/30 rounded-lg">
+                      <div className="flex items-center space-x-2">
+                        <AlertCircle className="w-4 h-4 text-blue-400" />
+                        <p className="text-sm font-semibold text-blue-400">
+                          Resubmission {selectedCourse.resubmissionCount} of 3
+                        </p>
+                      </div>
+                      <p className="text-xs text-blue-400 mt-1">
+                        {selectedCourse.resubmissionCount >= 3 
+                          ? "This is the final attempt. If rejected, the course will be automatically deleted."
+                          : `Employee has ${3 - selectedCourse.resubmissionCount} attempt${3 - selectedCourse.resubmissionCount !== 1 ? 's' : ''} left.`
+                        }
+                      </p>
+                    </div>
+                  )}
+
                   {/* Completion Proof Section */}
                   <div className="space-y-2">
                     <h4 className="font-semibold">Completion Proof</h4>
@@ -1042,18 +1122,22 @@ const Approvals: React.FC = () => {
                 </div>
               </div>
 
-              {/* Review Notes */}
+              {/* Review Notes - Mandatory for rejection */}
               <div className="space-y-3 mb-6">
                 <label className="block text-sm font-medium text-foreground">
                   <MessageSquare className="w-4 h-4 inline mr-2" />
-                  Review Notes (Optional)
+                  Review Notes {<span className="text-red-400">*</span>}
                 </label>
                 <textarea
                   value={courseReviewNotes}
                   onChange={(e) => setCourseReviewNotes(e.target.value)}
-                  placeholder="Add feedback or notes about the course completion..."
-                  className="w-full p-3 rounded-lg bg-background/50 border border-border focus:border-neon-purple focus:outline-none focus:ring-2 focus:ring-neon-purple/20 transition-colors min-h-[100px] resize-vertical"
+                  placeholder="Provide detailed feedback about the course completion. This is mandatory when rejecting and will be shown to the employee."
+                  className="w-full p-3 rounded-lg bg-background/50 border border-border focus:border-neon-purple focus:outline-none focus:ring-2 focus:ring-neon-purple/20 transition-colors min-h-[120px] resize-vertical"
+                  required
                 />
+                <p className="text-xs text-foreground-secondary">
+                  Review notes are required when rejecting a course completion. The employee will see this feedback.
+                </p>
               </div>
 
               {/* Action Buttons */}
@@ -1061,6 +1145,7 @@ const Approvals: React.FC = () => {
                 <Button
                   onClick={() => updateCourseCompletionStatus(selectedCourse, 'active', courseReviewNotes)}
                   className="flex-1 bg-red-500 hover:bg-red-600 text-white"
+                  disabled={!courseReviewNotes.trim()}
                 >
                   <XCircle className="w-4 h-4 mr-2" />
                   Reject Completion
