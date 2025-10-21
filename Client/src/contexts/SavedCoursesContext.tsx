@@ -43,7 +43,7 @@ interface SavedCoursesContextType {
   canSaveMore: boolean
   savedCount: number
   isLoading: boolean
-  refreshSavedCourses: () => void
+  refreshSavedCourses: () => Promise<void>
   uploadCertificate: (file: File, bucket?: string) => Promise<{ success: boolean; fileName?: string; publicUrl?: string; path?: string; error?: string }>
 }
 
