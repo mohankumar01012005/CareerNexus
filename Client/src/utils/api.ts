@@ -678,3 +678,175 @@ export const updateCourseCompletionStatus = async (data: {
     return { success: false, message: 'Failed to update course status' }
   }
 }
+
+export { HR_CREDENTIALS, createBasicAuthHeader }
+
+
+
+// Employee Job APIs
+export const getActiveJobsForEmployee = async (params: {
+  email: string;
+  password: string;
+}) => {
+  const endpoint = `${API_CONFIG.BASE_URL}/employee/jobs/active-jobs`;
+  console.log("[api] getActiveJobsForEmployee: request", {
+    endpoint,
+    hasEmail: !!params?.email,
+    hasPassword: !!params?.password,
+  });
+
+  try {
+    const resp = await fetch(endpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(params),
+    });
+
+    const result = await resp.json();
+    console.log("[api] getActiveJobsForEmployee: response", result);
+    return result;
+  } catch (error) {
+    console.error("[api] getActiveJobsForEmployee: error", error);
+    throw error;
+  }
+};
+
+export const submitJobSwitchRequest = async (params: {
+  email: string;
+  password: string;
+}) => {
+  const endpoint = `${API_CONFIG.BASE_URL}/employee/jobs/job-switch-request`;
+  console.log("[api] submitJobSwitchRequest: request", {
+    endpoint,
+    hasEmail: !!params?.email,
+    hasPassword: !!params?.password,
+  });
+
+  try {
+    const resp = await fetch(endpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(params),
+    });
+
+    const result = await resp.json();
+    console.log("[api] submitJobSwitchRequest: response", result);
+    return result;
+  } catch (error) {
+    console.error("[api] submitJobSwitchRequest: error", error);
+    throw error;
+  }
+};
+
+
+
+export const referCandidateApi = async (params: {
+  email: string;
+  password: string;
+  jobId: string;
+  candidateName: string;
+  candidateEmail: string;
+  candidatePhone?: string;
+  candidateResume: string;
+  candidateSkills?: string[];
+  candidateExperience?: string;
+}) => {
+  const endpoint = `${API_CONFIG.BASE_URL}/employee/jobs/${params.jobId}/refer`;
+  console.log("[api] referCandidateApi: request", {
+    endpoint,
+    hasEmail: !!params?.email,
+    hasPassword: !!params?.password,
+    jobId: params.jobId,
+    candidateName: params.candidateName,
+  });
+
+  try {
+    const resp = await fetch(endpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(params),
+    });
+
+    const result = await resp.json();
+    console.log("[api] referCandidateApi: response", result);
+    return result;
+  } catch (error) {
+    console.error("[api] referCandidateApi: error", error);
+    throw error;
+  }
+};
+
+
+// Add to api.ts file in the HR APIs section
+
+// HR Job Switch Request APIs
+export const updateJobSwitchRequestStatusHR = async (params: {
+  requestId: string;
+  status: 'approved' | 'rejected';
+  rejectionReason?: string;
+}) => {
+  const endpoint = `${API_CONFIG.BASE_URL}/hr/job-management/job-switch-requests/status`;
+  console.log("[HR][api] updateJobSwitchRequestStatusHR: request", { endpoint, params });
+
+  try {
+    const resp = await fetch(endpoint, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: createBasicAuthHeader(HR_CREDENTIALS.EMAIL, HR_CREDENTIALS.PASSWORD),
+      },
+      body: JSON.stringify(params),
+    });
+
+    if (!resp.ok) {
+      throw new Error(`HTTP error! status: ${resp.status}`);
+    }
+
+    const result = await resp.json();
+    console.log("[HR][api] updateJobSwitchRequestStatusHR: response", result);
+    return result;
+  } catch (error) {
+    console.error("[HR][api] updateJobSwitchRequestStatusHR: error", error);
+    throw error;
+  }
+};
+
+
+
+
+// Employee Job Application API
+export const applyForJobApi = async (params: {
+  email: string;
+  password: string;
+  jobId: string;
+  resumeType: 'current' | 'updated';
+  updatedResume?: string;
+}) => {
+  const endpoint = `${API_CONFIG.BASE_URL}/employee/jobs/${params.jobId}/apply`;
+  console.log("[api] applyForJobApi: request", {
+    endpoint,
+    hasEmail: !!params?.email,
+    hasPassword: !!params?.password,
+    jobId: params.jobId,
+    resumeType: params.resumeType,
+  });
+
+  try {
+    const resp = await fetch(endpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(params),
+    });
+
+    if (!resp.ok) {
+      throw new Error(`HTTP error! status: ${resp.status}`);
+    }
+
+    const result = await resp.json();
+    console.log("[api] applyForJobApi: response", result);
+    return result;
+  } catch (error) {
+    console.error("[api] applyForJobApi: error", error);
+    throw error;
+  }
+};
