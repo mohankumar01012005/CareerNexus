@@ -42,8 +42,10 @@ setTimeout(() => {
 app.use("/api/auth", require("./routes/auth"));
 app.use("/api/employee", require("./routes/employees"));
 app.use("/api/employee", require("./routes/savedCourses")); // Employee saved courses routes
-app.use("/api/hr", require("./routes/hr"));
+app.use("/api/employee/jobs", require("./routes/employeeJobRoutes")); // Employee job routes - FIXED PATH
+app.use("/api/hr", require("./routes/hr")); // HR routes (includes jobs)
 app.use("/api/hr", require("./routes/hrSavedCourses")); // HR saved courses routes
+app.use("/api/hr/job-management", require("./routes/hrJobManagementRoutes")); // HR job management routes
 
 // ✅ Default home route (use GET to avoid overriding APIs)
 app.get("/", (req, res) => {

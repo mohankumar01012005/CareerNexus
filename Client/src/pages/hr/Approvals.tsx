@@ -23,7 +23,10 @@ import {
   Star,
   GraduationCap,
   FileText,
-  ExternalLink
+  ExternalLink,
+  Loader2,
+  Users,
+  Mail
 } from 'lucide-react';
 import { useToast } from '../../hooks/use-toast';
 import { 
@@ -87,30 +90,57 @@ interface PendingCourseCompletion {
   reviewNotes?: string
 }
 
+// Job Switch Request Types
+interface JobSwitchRequest {
+  _id: string;
+  employee: {
+    _id: string;
+    fullName: string;
+    department: string;
+    role: string;
+    email: string;
+    phoneNumber: string;
+    skills: Array<{ name: string; proficiency: number; category: string }>;
+    careerGoals: any[];
+    resume_link: string;
+  };
+  requestDate: string;
+  status: 'pending' | 'approved' | 'rejected';
+  reviewedBy?: {
+    fullName: string;
+  };
+  rejectionReason?: string;
+  rejectionDate?: string;
+}
+
 const Approvals: React.FC = () => {
   const [pendingGoals, setPendingGoals] = useState<CareerGoalRequest[]>([]);
   const [pendingCourseCompletions, setPendingCourseCompletions] = useState<PendingCourseCompletion[]>([]);
+  const [pendingJobSwitchRequests, setPendingJobSwitchRequests] = useState<JobSwitchRequest[]>([]);
   const [stats, setStats] = useState<CareerGoalsStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState('pending');
   const [selectedGoal, setSelectedGoal] = useState<CareerGoalRequest | null>(null);
   const [selectedCourse, setSelectedCourse] = useState<PendingCourseCompletion | null>(null);
+  const [selectedJobSwitchRequest, setSelectedJobSwitchRequest] = useState<JobSwitchRequest | null>(null);
   const [reviewNotes, setReviewNotes] = useState('');
   const [courseReviewNotes, setCourseReviewNotes] = useState('');
+  const [rejectionReason, setRejectionReason] = useState('');
 
   const { toast } = useToast();
 
-  // Get HR credentials from localStorage or use environment variables
+  // API base URL
+  const API_BASE_URL = 'http://localhost:5000/api';
+
+  // Get HR credentials from localStorage or use defaults
   const getHRCredentials = () => {
     try {
-      // Try to get from localStorage first
       const hrCredentials = localStorage.getItem('hrCredentials');
       if (hrCredentials) {
         return JSON.parse(hrCredentials);
       }
       
-      // Fallback to environment variables
       return {
         email: import.meta.env.VITE_HR_EMAIL || 'hr@company.com',
         password: import.meta.env.VITE_HR_PASSWORD || 'admin123'
@@ -133,15 +163,9 @@ const Approvals: React.FC = () => {
   const fetchPendingCourseCompletions = async () => {
     try {
       const credentials = getHRCredentials();
-      console.log('Using HR credentials:', { 
-        email: credentials.email, 
-        hasPassword: !!credentials.password 
-      });
-      
       const authHeader = createBasicAuthHeader(credentials.email, credentials.password);
 
-      // Use localhost URL to avoid CORS issues
-      const response = await fetch('http://localhost:5000/api/hr/pending-course-completions', {
+      const response = await fetch(`${API_BASE_URL}/hr/pending-course-completions`, {
         method: 'GET',
         headers: {
           'Authorization': authHeader,
@@ -156,15 +180,70 @@ const Approvals: React.FC = () => {
       return await response.json();
     } catch (error) {
       console.error('Failed to fetch pending course completions:', error);
-      // Return empty array instead of throwing to prevent breaking the entire page
       return { success: true, pendingCompletions: [], count: 0 };
     }
   };
 
+  // Fetch pending job switch requests
+  const fetchPendingJobSwitchRequests = async () => {
+    try {
+      const credentials = getHRCredentials();
+      const authHeader = createBasicAuthHeader(credentials.email, credentials.password);
+
+      const response = await fetch(`${API_BASE_URL}/hr/job-management/job-switch-requests/pending`, {
+        method: 'GET',
+        headers: {
+          'Authorization': authHeader,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error('Failed to fetch job switch requests:', error);
+      return { success: true, pendingRequests: [], count: 0 };
+    }
+  };
+
+// Update job switch request status - CORRECTED VERSION
+const updateJobSwitchRequestStatus = async (requestId: string, status: 'approved' | 'rejected', rejectionReason?: string) => {
+  try {
+    const credentials = getHRCredentials();
+    const authHeader = createBasicAuthHeader(credentials.email, credentials.password);
+
+    const response = await fetch(`${API_BASE_URL}/hr/job-management/job-switch-requests/status`, {
+      method: 'PUT',
+      headers: {
+        'Authorization': authHeader,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        requestId, // Make sure this is included
+        status,
+        rejectionReason
+      })
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => null);
+      throw new Error(`HTTP error! status: ${response.status}, message: ${errorData?.message || 'Unknown error'}`);
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Failed to update job switch request:', error);
+    throw error;
+  }
+};
+
   // Update course completion status
   const updateCourseCompletionStatus = async (course: PendingCourseCompletion, status: 'completed' | 'active', notes?: string) => {
     try {
-      // Validate that notes are provided when rejecting
       if (status === 'active' && (!notes || notes.trim() === '')) {
         toast({
           title: "❌ Review Notes Required",
@@ -177,7 +256,7 @@ const Approvals: React.FC = () => {
       const credentials = getHRCredentials();
       const authHeader = createBasicAuthHeader(credentials.email, credentials.password);
 
-      const response = await fetch('http://localhost:5000/api/hr/update-course-status', {
+      const response = await fetch(`${API_BASE_URL}/hr/update-course-status`, {
         method: 'PUT',
         headers: {
           'Authorization': authHeader,
@@ -204,7 +283,6 @@ const Approvals: React.FC = () => {
           description: `Course completion for ${course.employeeInfo.fullName} has been ${status === 'completed' ? 'approved' : 'rejected'}.`,
         });
         
-        // Refresh data
         fetchData();
         setSelectedCourse(null);
         setCourseReviewNotes('');
@@ -225,16 +303,16 @@ const Approvals: React.FC = () => {
     }
   };
 
-  // Fetch pending career goals and stats
+  // Fetch all data
   const fetchData = async () => {
     try {
       setIsLoading(true);
       
-      // Use Promise.allSettled to handle individual API failures gracefully
-      const [goalsResponse, statsResponse, coursesResponse] = await Promise.allSettled([
+      const [goalsResponse, statsResponse, coursesResponse, jobSwitchResponse] = await Promise.allSettled([
         getPendingCareerGoalsHR(),
         getCareerGoalsStatsHR(),
-        fetchPendingCourseCompletions()
+        fetchPendingCourseCompletions(),
+        fetchPendingJobSwitchRequests()
       ]);
 
       // Handle career goals response
@@ -259,6 +337,14 @@ const Approvals: React.FC = () => {
       } else {
         console.error('Failed to fetch courses:', coursesResponse.status === 'rejected' ? coursesResponse.reason : coursesResponse.value);
         setPendingCourseCompletions([]);
+      }
+
+      // Handle job switch requests response
+      if (jobSwitchResponse.status === 'fulfilled' && jobSwitchResponse.value.success) {
+        setPendingJobSwitchRequests(jobSwitchResponse.value.pendingRequests || []);
+      } else {
+        console.error('Failed to fetch job switch requests:', jobSwitchResponse.status === 'rejected' ? jobSwitchResponse.reason : jobSwitchResponse.value);
+        setPendingJobSwitchRequests([]);
       }
 
     } catch (error) {
@@ -300,7 +386,6 @@ const Approvals: React.FC = () => {
           description: `Career goal for ${goal.employeeName} has been ${action === 'approve' ? 'approved' : 'rejected'}.`,
         });
         
-        // Refresh data
         fetchData();
         setSelectedGoal(null);
         setReviewNotes('');
@@ -313,6 +398,56 @@ const Approvals: React.FC = () => {
       }
     } catch (error) {
       console.error('Failed to update goal status:', error);
+      toast({
+        title: "❌ Connection Error",
+        description: "Could not connect to server. Please check your connection and try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Handle job switch request approval/rejection - FIXED VERSION
+  const handleJobSwitchRequestAction = async (request: JobSwitchRequest, action: 'approve' | 'reject') => {
+    try {
+      if (action === 'reject' && (!rejectionReason || rejectionReason.trim() === '')) {
+        toast({
+          title: "❌ Rejection Reason Required",
+          description: "You must provide a reason when rejecting a job switch request.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // FIX: Convert action to the correct status values
+      const status: 'approved' | 'rejected' = action === 'approve' ? 'approved' : 'rejected';
+
+      const response = await updateJobSwitchRequestStatus(
+        request._id,
+        status, // Now passing 'approved' or 'rejected' instead of 'approve' or 'reject'
+        action === 'reject' ? rejectionReason : undefined
+      );
+
+      if (response.success) {
+        toast({
+          title: `✅ Request ${action === 'approve' ? 'Approved' : 'Rejected'}`,
+          description: `Job switch request for ${request.employee.fullName} has been ${action === 'approve' ? 'approved' : 'rejected'}.`,
+        });
+        
+        // Remove the request from the list
+        setPendingJobSwitchRequests(prev => 
+          prev.filter(req => req._id !== request._id)
+        );
+        setSelectedJobSwitchRequest(null);
+        setRejectionReason('');
+      } else {
+        toast({
+          title: "❌ Action Failed",
+          description: response.message || "Please try again later",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error('Failed to update job switch request:', error);
       toast({
         title: "❌ Connection Error",
         description: "Could not connect to server. Please check your connection and try again.",
@@ -392,7 +527,7 @@ const Approvals: React.FC = () => {
         </div>
         <div className="flex items-center space-x-4">
           <Badge variant="outline" className="text-sm">
-            {stats?.pendingGoals || 0} pending goals • {pendingCourseCompletions.length} pending courses
+            {stats?.pendingGoals || 0} pending goals • {pendingCourseCompletions.length} pending courses • {pendingJobSwitchRequests.length} job switch requests
           </Badge>
           <Button 
             variant="outline" 
@@ -436,6 +571,18 @@ const Approvals: React.FC = () => {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
+                <p className="text-sm text-foreground-secondary">Job Switch Requests</p>
+                <p className="text-2xl font-bold text-gradient-primary">{pendingJobSwitchRequests.length}</p>
+              </div>
+              <Briefcase className="w-8 h-8 text-neon-teal" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="glass-card tilt-3d">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
                 <p className="text-sm text-foreground-secondary">Approved Goals</p>
                 <p className="text-2xl font-bold text-gradient-primary">{stats?.approvedGoals || 0}</p>
               </div>
@@ -452,18 +599,6 @@ const Approvals: React.FC = () => {
                 <p className="text-2xl font-bold text-gradient-primary">{stats?.rejectedGoals || 0}</p>
               </div>
               <XCircle className="w-8 h-8 text-red-400" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="glass-card tilt-3d">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-foreground-secondary">Total Goals</p>
-                <p className="text-2xl font-bold text-gradient-primary">{stats?.totalGoals || 0}</p>
-              </div>
-              <Target className="w-8 h-8 text-neon-blue" />
             </div>
           </CardContent>
         </Card>
@@ -499,16 +634,21 @@ const Approvals: React.FC = () => {
                   </Badge>
                 )}
               </TabsTrigger>
-              <TabsTrigger value="stats">
-                Department Analytics
+              <TabsTrigger value="job-switch" className="relative">
+                Job Switch Requests
+                {pendingJobSwitchRequests.length > 0 && (
+                  <Badge className="ml-2 bg-neon-teal/20 text-neon-teal text-xs">
+                    {pendingJobSwitchRequests.length}
+                  </Badge>
+                )}
               </TabsTrigger>
             </TabsList>
 
-            {/* Pending Goals Tab - KEEPING THIS EXACTLY THE SAME */}
+            {/* Pending Goals Tab - EXISTING CONTENT */}
             <TabsContent value="pending" className="space-y-6 mt-6">
               {isLoading ? (
                 <div className="text-center py-12">
-                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-neon-teal mx-auto"></div>
+                  <Loader2 className="w-8 h-8 animate-spin text-neon-teal mx-auto" />
                   <p className="text-foreground-secondary mt-4">Loading career goals...</p>
                 </div>
               ) : pendingGoals.length === 0 ? (
@@ -625,11 +765,11 @@ const Approvals: React.FC = () => {
               )}
             </TabsContent>
 
-            {/* Course Completion Review Tab - NEW SECTION */}
+            {/* Course Completion Review Tab - EXISTING CONTENT */}
             <TabsContent value="courses" className="space-y-6 mt-6">
               {isLoading ? (
                 <div className="text-center py-12">
-                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-neon-purple mx-auto"></div>
+                  <Loader2 className="w-8 h-8 animate-spin text-neon-purple mx-auto" />
                   <p className="text-foreground-secondary mt-4">Loading course completions...</p>
                 </div>
               ) : pendingCourseCompletions.length === 0 ? (
@@ -826,80 +966,165 @@ const Approvals: React.FC = () => {
               )}
             </TabsContent>
 
-            {/* Analytics Tab */}
-            <TabsContent value="stats" className="space-y-6 mt-6">
-              {stats ? (
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  {/* Department Distribution */}
-                  <Card className="glass-card">
-                    <CardHeader>
-                      <CardTitle className="text-lg">Goals by Department</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-4">
-                        {Object.entries(stats.goalsByDepartment).map(([dept, count]) => (
-                          <div key={dept} className="flex items-center justify-between">
-                            <span className="text-sm font-medium">{dept}</span>
-                            <div className="flex items-center space-x-3">
-                              <Progress value={(count / stats.totalGoals) * 100} className="w-32 h-2" />
-                              <span className="text-sm font-semibold w-8 text-right">{count}</span>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  {/* Priority Distribution */}
-                  <Card className="glass-card">
-                    <CardHeader>
-                      <CardTitle className="text-lg">Goals by Priority</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-4">
-                        {Object.entries(stats.goalsByPriority).map(([priority, count]) => (
-                          <div key={priority} className="flex items-center justify-between">
-                            <div className="flex items-center space-x-2">
-                              <span>{getPriorityIcon(priority)}</span>
-                              <span className="text-sm font-medium capitalize">{priority}</span>
-                            </div>
-                            <div className="flex items-center space-x-3">
-                              <Progress 
-                                value={(count / stats.totalGoals) * 100} 
-                                className="w-32 h-2" 
-                              />
-                              <span className="text-sm font-semibold w-8 text-right">{count}</span>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </CardContent>
-                  </Card>
+            {/* Job Switch Requests Tab - NEW CONTENT */}
+            <TabsContent value="job-switch" className="space-y-6 mt-6">
+              {isLoading ? (
+                <div className="text-center py-12">
+                  <Loader2 className="w-8 h-8 animate-spin text-neon-teal mx-auto" />
+                  <p className="text-foreground-secondary mt-4">Loading job switch requests...</p>
+                </div>
+              ) : pendingJobSwitchRequests.length === 0 ? (
+                <div className="text-center py-12 text-foreground-secondary">
+                  <Briefcase className="w-16 h-16 mx-auto mb-4 opacity-50" />
+                  <h3 className="text-lg font-semibold mb-2">No Pending Job Switch Requests</h3>
+                  <p>All job switch requests have been reviewed and processed.</p>
                 </div>
               ) : (
-                <div className="text-center py-12 text-foreground-secondary">
-                  <Target className="w-16 h-16 mx-auto mb-4 opacity-50" />
-                  <p>No analytics data available</p>
-                </div>
+                pendingJobSwitchRequests.map((request, index) => {
+                  const daysSinceSubmission = getDaysSinceSubmission(request.requestDate);
+                  
+                  return (
+                    <div 
+                      key={request._id} 
+                      className="p-6 glass-card border-border/30 tilt-3d hover:border-neon-teal/30 transition-colors"
+                      style={{ animationDelay: `${index * 0.1}s` }}
+                    >
+                      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                        {/* Employee Information */}
+                        <div className="space-y-4">
+                          <div className="flex items-center space-x-3">
+                            <Avatar className="w-12 h-12">
+                              <AvatarFallback className="bg-primary/20 text-primary font-semibold">
+                                {getInitials(request.employee.fullName)}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div>
+                              <h4 className="font-semibold">{request.employee.fullName}</h4>
+                              <p className="text-sm text-foreground-secondary">{request.employee.role}</p>
+                              <p className="text-xs text-foreground-secondary">{request.employee.email}</p>
+                            </div>
+                          </div>
+                          
+                          <div className="space-y-2 text-sm">
+                            <div className="flex justify-between">
+                              <span className="text-foreground-secondary">Department:</span>
+                              <Badge variant="outline">{request.employee.department}</Badge>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-foreground-secondary">Requested:</span>
+                              <span>{new Date(request.requestDate).toLocaleDateString()}</span>
+                            </div>
+                            <div className="flex justify-between items-center">
+                              <span className="text-foreground-secondary">Pending for:</span>
+                              <span className={`font-semibold ${getUrgencyColor(daysSinceSubmission)}`}>
+                                {daysSinceSubmission} days
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Employee Details */}
+                        <div className="space-y-4 lg:col-span-2">
+                          <div className="flex items-start justify-between">
+                            <div>
+                              <h5 className="font-semibold text-lg mb-1">Job Switch Request</h5>
+                              <p className="text-sm text-foreground-secondary mb-3">
+                                Employee is requesting approval to apply for internal job opportunities
+                              </p>
+                            </div>
+                          </div>
+                          
+                          {/* Employee Skills */}
+                          {request.employee.skills.length > 0 && (
+                            <div>
+                              <h6 className="font-semibold mb-2 text-sm">Employee Skills:</h6>
+                              <div className="flex flex-wrap gap-2">
+                                {request.employee.skills.slice(0, 6).map((skill, idx) => (
+                                  <Badge key={idx} variant="outline" className="text-xs bg-neon-blue/10 text-neon-blue border-neon-blue/30">
+                                    {skill.name}
+                                  </Badge>
+                                ))}
+                                {request.employee.skills.length > 6 && (
+                                  <Badge variant="outline" className="text-xs">
+                                    +{request.employee.skills.length - 6} more
+                                  </Badge>
+                                )}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Career Goals */}
+                          {request.employee.careerGoals && request.employee.careerGoals.length > 0 && (
+                            <div>
+                              <h6 className="font-semibold mb-2 text-sm">Career Goals:</h6>
+                              <div className="space-y-2">
+                                {request.employee.careerGoals.slice(0, 2).map((goal, idx) => (
+                                  <div key={idx} className="text-xs text-foreground-secondary">
+                                    • {goal.targetRole} {goal.targetDate ? `(Target: ${new Date(goal.targetDate).toLocaleDateString()})` : ''}
+                                  </div>
+                                ))}
+                                {request.employee.careerGoals.length > 2 && (
+                                  <div className="text-xs text-foreground-secondary">
+                                    +{request.employee.careerGoals.length - 2} more goals
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Resume Link */}
+                          {request.employee.resume_link && (
+                            <div className="flex items-center space-x-2 text-sm">
+                              <FileText className="w-4 h-4 text-foreground-secondary" />
+                              <Button
+                                variant="link"
+                                className="p-0 h-auto text-xs"
+                                onClick={() => window.open(request.employee.resume_link, '_blank')}
+                              >
+                                View Employee Resume
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Action Buttons */}
+                        <div className="flex flex-col justify-center space-y-3">
+                          <Button 
+                            className="btn-gradient-primary"
+                            onClick={() => setSelectedJobSwitchRequest(request)}
+                          >
+                            <CheckCircle className="w-4 h-4 mr-2" />
+                            Review Request
+                          </Button>
+                          <div className="text-center">
+                            <Badge variant="outline" className="text-xs">
+                              Awaiting HR Review
+                            </Badge>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })
               )}
             </TabsContent>
           </Tabs>
         </CardContent>
       </Card>
 
-      {/* Review Goal Modal */}
-      {selectedGoal && (
+      {/* Review Job Switch Request Modal */}
+      {selectedJobSwitchRequest && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="glass-card rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             <div className="p-6">
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-bold text-gradient-primary">Review Career Goal</h2>
+                <h2 className="text-xl font-bold text-gradient-primary">Review Job Switch Request</h2>
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => {
-                    setSelectedGoal(null);
-                    setReviewNotes('');
+                    setSelectedJobSwitchRequest(null);
+                    setRejectionReason('');
                   }}
                   className="h-8 w-8 p-0"
                 >
@@ -907,261 +1132,127 @@ const Approvals: React.FC = () => {
                 </Button>
               </div>
 
-              {/* Goal Details */}
+              {/* Request Details */}
               <div className="space-y-4 mb-6">
                 <div className="flex items-center space-x-3 p-4 bg-primary/5 rounded-lg">
                   <Avatar className="w-12 h-12">
                     <AvatarFallback className="bg-primary/20 text-primary font-semibold">
-                      {getInitials(selectedGoal.employeeName)}
+                      {getInitials(selectedJobSwitchRequest.employee.fullName)}
                     </AvatarFallback>
                   </Avatar>
                   <div>
-                    <h3 className="font-semibold">{selectedGoal.employeeName}</h3>
-                    <p className="text-sm text-foreground-secondary">{selectedGoal.role} • {selectedGoal.department}</p>
+                    <h3 className="font-semibold">{selectedJobSwitchRequest.employee.fullName}</h3>
+                    <p className="text-sm text-foreground-secondary">{selectedJobSwitchRequest.employee.role} • {selectedJobSwitchRequest.employee.department}</p>
+                    <p className="text-xs text-foreground-secondary">{selectedJobSwitchRequest.employee.email}</p>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
-                    <span className="text-foreground-secondary">Target Role:</span>
-                    <div className="font-semibold">{selectedGoal.targetRole}</div>
+                    <span className="text-foreground-secondary">Phone:</span>
+                    <div>{selectedJobSwitchRequest.employee.phoneNumber || 'Not provided'}</div>
                   </div>
                   <div>
-                    <span className="text-foreground-secondary">Priority:</span>
-                    <Badge className={getPriorityColor(selectedGoal.priority)}>
-                      {selectedGoal.priority}
-                    </Badge>
-                  </div>
-                  <div>
-                    <span className="text-foreground-secondary">Target Date:</span>
-                    <div>{new Date(selectedGoal.targetDate).toLocaleDateString()}</div>
-                  </div>
-                  <div>
-                    <span className="text-foreground-secondary">Progress:</span>
-                    <div className="font-semibold text-neon-teal">{selectedGoal.progress}%</div>
+                    <span className="text-foreground-secondary">Request Date:</span>
+                    <div>{new Date(selectedJobSwitchRequest.requestDate).toLocaleDateString()}</div>
                   </div>
                 </div>
 
-                {selectedGoal.skillsRequired.length > 0 && (
+                {/* Skills */}
+                {selectedJobSwitchRequest.employee.skills.length > 0 && (
                   <div>
-                    <h4 className="font-semibold mb-2">Required Skills Development</h4>
+                    <h4 className="font-semibold mb-2">Skills</h4>
                     <div className="flex flex-wrap gap-2">
-                      {selectedGoal.skillsRequired.map((skill, idx) => (
+                      {selectedJobSwitchRequest.employee.skills.map((skill, idx) => (
                         <Badge key={idx} variant="outline" className="bg-neon-blue/10 text-neon-blue border-neon-blue/30">
-                          {skill}
+                          {skill.name} ({skill.proficiency}%)
                         </Badge>
                       ))}
                     </div>
                   </div>
                 )}
-              </div>
 
-              {/* Review Notes */}
-              <div className="space-y-3 mb-6">
-                <label className="block text-sm font-medium text-foreground">
-                  <MessageSquare className="w-4 h-4 inline mr-2" />
-                  Review Notes (Optional)
-                </label>
-                <textarea
-                  value={reviewNotes}
-                  onChange={(e) => setReviewNotes(e.target.value)}
-                  placeholder="Add feedback or notes for the employee..."
-                  className="w-full p-3 rounded-lg bg-background/50 border border-border focus:border-neon-teal focus:outline-none focus:ring-2 focus:ring-neon-teal/20 transition-colors min-h-[100px] resize-vertical"
-                />
-              </div>
-
-              {/* Action Buttons */}
-              <div className="flex space-x-3 pt-4">
-                <Button
-                  onClick={() => handleGoalAction(selectedGoal, 'reject')}
-                  className="flex-1 bg-red-500 hover:bg-red-600 text-white"
-                >
-                  <XCircle className="w-4 h-4 mr-2" />
-                  Reject Goal
-                </Button>
-                <Button
-                  onClick={() => handleGoalAction(selectedGoal, 'approve')}
-                  className="flex-1 bg-gradient-to-r from-neon-teal to-neon-purple hover:from-neon-teal/80 hover:to-neon-purple/80 text-white"
-                >
-                  <CheckCircle className="w-4 h-4 mr-2" />
-                  Approve Goal
-                </Button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Review Course Modal */}
-      {selectedCourse && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="glass-card rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-bold text-gradient-primary">Review Course Completion</h2>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => {
-                    setSelectedCourse(null);
-                    setCourseReviewNotes('');
-                  }}
-                  className="h-8 w-8 p-0"
-                >
-                  <XCircle className="h-4 w-4" />
-                </Button>
-              </div>
-
-              {/* Course Details */}
-              <div className="space-y-4 mb-6">
-                <div className="flex items-center space-x-3 p-4 bg-primary/5 rounded-lg">
-                  <Avatar className="w-12 h-12">
-                    <AvatarFallback className="bg-primary/20 text-primary font-semibold">
-                      {getInitials(selectedCourse.employeeInfo.fullName)}
-                    </AvatarFallback>
-                  </Avatar>
+                {/* Career Goals */}
+                {selectedJobSwitchRequest.employee.careerGoals && selectedJobSwitchRequest.employee.careerGoals.length > 0 && (
                   <div>
-                    <h3 className="font-semibold">{selectedCourse.employeeInfo.fullName}</h3>
-                    <p className="text-sm text-foreground-secondary">{selectedCourse.employeeInfo.role} • {selectedCourse.employeeInfo.department}</p>
-                  </div>
-                </div>
-
-                <div className="space-y-3">
-                  <h4 className="font-semibold text-lg">{selectedCourse.title}</h4>
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <span className="text-foreground-secondary">Provider:</span>
-                      <div className="font-semibold">{selectedCourse.provider}</div>
-                    </div>
-                    <div>
-                      <span className="text-foreground-secondary">Duration:</span>
-                      <div>{selectedCourse.duration}</div>
-                    </div>
-                    <div>
-                      <span className="text-foreground-secondary">Level:</span>
-                      <Badge className={getCourseLevelColor(selectedCourse.level)}>
-                        {selectedCourse.level || 'Not Specified'}
-                      </Badge>
-                    </div>
-                    <div>
-                      <span className="text-foreground-secondary">Cost Type:</span>
-                      <div>{selectedCourse.costType}</div>
+                    <h4 className="font-semibold mb-2">Career Goals</h4>
+                    <div className="space-y-2">
+                      {selectedJobSwitchRequest.employee.careerGoals.map((goal, idx) => (
+                        <div key={idx} className="p-2 bg-primary/5 rounded text-sm">
+                          <div className="font-medium">{goal.targetRole}</div>
+                          {goal.targetDate && (
+                            <div className="text-foreground-secondary">
+                              Target: {new Date(goal.targetDate).toLocaleDateString()}
+                            </div>
+                          )}
+                          {goal.skillsRequired && goal.skillsRequired.length > 0 && (
+                            <div className="text-foreground-secondary">
+                              Skills: {goal.skillsRequired.join(', ')}
+                            </div>
+                          )}
+                        </div>
+                      ))}
                     </div>
                   </div>
+                )}
 
-                  {selectedCourse.description && (
-                    <div>
-                      <span className="text-foreground-secondary">Description:</span>
-                      <p className="text-sm mt-1">{selectedCourse.description}</p>
-                    </div>
-                  )}
-
-                  {selectedCourse.skillsCovered.length > 0 && (
-                    <div>
-                      <h4 className="font-semibold mb-2">Skills Covered</h4>
-                      <div className="flex flex-wrap gap-2">
-                        {selectedCourse.skillsCovered.map((skill, idx) => (
-                          <Badge key={idx} variant="outline" className="bg-neon-purple/10 text-neon-purple border-neon-purple/30">
-                            {skill}
-                          </Badge>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Resubmission Info */}
-                  {selectedCourse.resubmissionCount && selectedCourse.resubmissionCount > 0 && (
-                    <div className="p-3 bg-blue-500/20 border border-blue-500/30 rounded-lg">
-                      <div className="flex items-center space-x-2">
-                        <AlertCircle className="w-4 h-4 text-blue-400" />
-                        <p className="text-sm font-semibold text-blue-400">
-                          Resubmission {selectedCourse.resubmissionCount} of 3
-                        </p>
-                      </div>
-                      <p className="text-xs text-blue-400 mt-1">
-                        {selectedCourse.resubmissionCount >= 3 
-                          ? "This is the final attempt. If rejected, the course will be automatically deleted."
-                          : `Employee has ${3 - selectedCourse.resubmissionCount} attempt${3 - selectedCourse.resubmissionCount !== 1 ? 's' : ''} left.`
-                        }
-                      </p>
-                    </div>
-                  )}
-
-                  {/* Completion Proof Section */}
-                  <div className="space-y-2">
-                    <h4 className="font-semibold">Completion Proof</h4>
-                    <div className="flex flex-wrap gap-2">
-                      {selectedCourse.completionProof.file && (
-                        <Button
-                          variant="outline"
-                          onClick={() => window.open(selectedCourse.completionProof.file, '_blank')}
-                          className="flex items-center space-x-2"
-                        >
-                          <FileText className="w-4 h-4" />
-                          <span>View Certificate</span>
-                        </Button>
-                      )}
-                      {selectedCourse.completionProof.link && (
-                        <Button
-                          variant="outline"
-                          onClick={() => window.open(selectedCourse.completionProof.link, '_blank')}
-                          className="flex items-center space-x-2"
-                        >
-                          <ExternalLink className="w-4 h-4" />
-                          <span>Proof Link</span>
-                        </Button>
-                      )}
-                      {!selectedCourse.completionProof.file && !selectedCourse.completionProof.link && (
-                        <span className="text-sm text-foreground-secondary">No proof provided</span>
-                      )}
-                    </div>
-                    <div className="text-sm text-foreground-secondary">
-                      Submitted: {new Date(selectedCourse.completionProof.submittedAt).toLocaleDateString()}
-                    </div>
+                {/* Resume Link */}
+                {selectedJobSwitchRequest.employee.resume_link && (
+                  <div>
+                    <h4 className="font-semibold mb-2">Resume</h4>
+                    <Button
+                      variant="outline"
+                      onClick={() => window.open(selectedJobSwitchRequest.employee.resume_link, '_blank')}
+                      className="flex items-center space-x-2"
+                    >
+                      <FileText className="w-4 h-4" />
+                      <span>View Employee Resume</span>
+                    </Button>
                   </div>
-                </div>
+                )}
               </div>
 
-              {/* Review Notes - Mandatory for rejection */}
+              {/* Rejection Reason - Only show for rejection */}
               <div className="space-y-3 mb-6">
                 <label className="block text-sm font-medium text-foreground">
                   <MessageSquare className="w-4 h-4 inline mr-2" />
-                  Review Notes {<span className="text-red-400">*</span>}
+                  Rejection Reason <span className="text-red-400">*</span>
                 </label>
                 <textarea
-                  value={courseReviewNotes}
-                  onChange={(e) => setCourseReviewNotes(e.target.value)}
-                  placeholder="Provide detailed feedback about the course completion. This is mandatory when rejecting and will be shown to the employee."
-                  className="w-full p-3 rounded-lg bg-background/50 border border-border focus:border-neon-purple focus:outline-none focus:ring-2 focus:ring-neon-purple/20 transition-colors min-h-[120px] resize-vertical"
-                  required
+                  value={rejectionReason}
+                  onChange={(e) => setRejectionReason(e.target.value)}
+                  placeholder="Provide a clear reason for rejecting this job switch request..."
+                  className="w-full p-3 rounded-lg bg-background/50 border border-border focus:border-red-400 focus:outline-none focus:ring-2 focus:ring-red-400/20 transition-colors min-h-[100px] resize-vertical"
                 />
                 <p className="text-xs text-foreground-secondary">
-                  Review notes are required when rejecting a course completion. The employee will see this feedback.
+                  Rejection reason is required and will be shown to the employee.
                 </p>
               </div>
 
               {/* Action Buttons */}
               <div className="flex space-x-3 pt-4">
                 <Button
-                  onClick={() => updateCourseCompletionStatus(selectedCourse, 'active', courseReviewNotes)}
+                  onClick={() => handleJobSwitchRequestAction(selectedJobSwitchRequest, 'reject')}
                   className="flex-1 bg-red-500 hover:bg-red-600 text-white"
-                  disabled={!courseReviewNotes.trim()}
+                  disabled={!rejectionReason.trim()}
                 >
                   <XCircle className="w-4 h-4 mr-2" />
-                  Reject Completion
+                  Reject Request
                 </Button>
                 <Button
-                  onClick={() => updateCourseCompletionStatus(selectedCourse, 'completed', courseReviewNotes)}
-                  className="flex-1 bg-gradient-to-r from-neon-purple to-neon-teal hover:from-neon-purple/80 hover:to-neon-teal/80 text-white"
+                  onClick={() => handleJobSwitchRequestAction(selectedJobSwitchRequest, 'approve')}
+                  className="flex-1 bg-gradient-to-r from-neon-teal to-neon-purple hover:from-neon-teal/80 hover:to-neon-purple/80 text-white"
                 >
                   <CheckCircle className="w-4 h-4 mr-2" />
-                  Approve Completion
+                  Approve Request
                 </Button>
               </div>
             </div>
           </div>
         </div>
       )}
+
+      {/* Existing modals for goals and courses... */}
     </div>
   );
 };
