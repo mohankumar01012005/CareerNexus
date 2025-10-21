@@ -1,6 +1,6 @@
 "use client"
 
-import type React from "react"
+import React from "react"
 import { useState, useEffect } from "react"
 import { useAuth } from "../../contexts/AuthContext"
 import { useSavedCourses } from "../../contexts/SavedCoursesContext"
@@ -275,7 +275,7 @@ const CareerRecommendations: React.FC = () => {
   const navigate = useNavigate()
   const [careerGoals, setCareerGoals] = useState<CareerGoal[]>([])
   const [resumeData, setResumeData] = useState<ResumeData | null>(null)
-  const [courses, setCourses] = useState<Course[]>([])
+  const [aiCourses, setAiCourses] = useState<Course[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [saveModalOpen, setSaveModalOpen] = useState(false)
   const [completionModalOpen, setCompletionModalOpen] = useState(false)
@@ -320,7 +320,7 @@ const CareerRecommendations: React.FC = () => {
       )
     } catch (error) {
       console.error("Failed to fetch recommendations data:", error)
-      setCourses([])
+      setAiCourses([])
     } finally {
       setIsLoading(false)
     }
@@ -337,7 +337,7 @@ const CareerRecommendations: React.FC = () => {
     const approvedGoals = goals.filter(goal => goal.status === "approved")
     
     if (approvedGoals.length === 0) {
-      setCourses([])
+      setAiCourses([])
       return
     }
 
@@ -366,7 +366,7 @@ const CareerRecommendations: React.FC = () => {
       const cached = localStorage.getItem(cacheKey)
       if (cached) {
         console.log("[AI] Using cached top recommendations")
-        setCourses(JSON.parse(cached))
+        setAiCourses(JSON.parse(cached))
         return
       }
     }
@@ -403,10 +403,10 @@ const CareerRecommendations: React.FC = () => {
         localStorage.setItem(cacheKey, JSON.stringify(topCourses))
       }
 
-      setCourses(topCourses)
+      setAiCourses(topCourses)
     } catch (error) {
       console.error("[AI] Failed to generate top recommendations:", error)
-      setCourses([])
+      setAiCourses([])
     }
   }
 
@@ -480,6 +480,35 @@ const CareerRecommendations: React.FC = () => {
     return savedCourses.find(sc => sc.title === course.title && sc.provider === course.provider)
   }
 
+  // Combine and limit to max 3 courses total - saved courses first, then AI recommendations
+  const displayCourses = React.useMemo(() => {
+    const coursesToShow = []
+    
+    // Add saved courses first (up to 3)
+    const savedToShow = savedCourses.slice(0, 3)
+    coursesToShow.push(...savedToShow.map(sc => ({
+      ...sc,
+      isSaved: true,
+      source: 'saved' as const
+    })))
+    
+    // If we have less than 3 saved courses, add AI recommendations
+    if (coursesToShow.length < 3) {
+      const remainingSlots = 3 - coursesToShow.length
+      const aiToShow = aiCourses
+        .filter(aiCourse => !savedCourses.some(sc => sc.title === aiCourse.title && sc.provider === aiCourse.provider))
+        .slice(0, remainingSlots)
+      
+      coursesToShow.push(...aiToShow.map(aiCourse => ({
+        ...aiCourse,
+        isSaved: false,
+        source: 'ai' as const
+      })))
+    }
+    
+    return coursesToShow
+  }, [savedCourses, aiCourses])
+
   if (isLoading) {
     return (
       <Card className="glass-card">
@@ -536,11 +565,14 @@ const CareerRecommendations: React.FC = () => {
             <span>AI Learning Recommendations</span>
           </CardTitle>
           <CardDescription>
-            Top courses based on your {approvedGoals.length} approved career goal{approvedGoals.length > 1 ? 's' : ''}
+            {savedCourses.length > 0 
+              ? `Your saved courses and top recommendations based on your ${approvedGoals.length} approved career goal${approvedGoals.length > 1 ? 's' : ''}`
+              : `Top courses based on your ${approvedGoals.length} approved career goal${approvedGoals.length > 1 ? 's' : ''}`
+            }
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {courses.length === 0 ? (
+          {displayCourses.length === 0 ? (
             <div className="text-center py-8 glass-card border-border/30">
               <BookOpen className="w-12 h-12 text-foreground-secondary mx-auto mb-4" />
               <h3 className="text-lg font-semibold mb-2">No Skill Gaps Found</h3>
@@ -549,17 +581,15 @@ const CareerRecommendations: React.FC = () => {
               </p>
             </div>
           ) : (
-            courses.map((course, index) => {
-              const isSaved = isCourseSaved(course)
-              const savedCourse = getSavedCourseDetails(course)
-              const savedStatus = savedCourse?.status
-              const isSaveDisabled = !canSaveMore && !isSaved
-              const resubmissionCount = savedCourse?.resubmissionCount || 0
-              const reviewNotes = savedCourse?.reviewNotes
+            displayCourses.map((course, index) => {
+              const savedStatus = course.source === 'saved' ? course.status : getSavedCourseStatus(course)
+              const resubmissionCount = course.source === 'saved' ? course.resubmissionCount || 0 : (getSavedCourseDetails(course)?.resubmissionCount || 0)
+              const reviewNotes = course.source === 'saved' ? course.reviewNotes : getSavedCourseDetails(course)?.reviewNotes
+              const isSaveDisabled = !canSaveMore && course.isSaved
 
               return (
                 <div
-                  key={index}
+                  key={course.source === 'saved' ? `saved-${course.id}` : `ai-${index}`}
                   className="p-4 glass-card border-border/30 tilt-3d hover:scale-[1.02] transition-transform"
                   style={{ animationDelay: `${index * 0.1}s` }}
                 >
@@ -592,7 +622,7 @@ const CareerRecommendations: React.FC = () => {
                           Completed
                         </Badge>
                       )}
-                      {isSaved && savedStatus === "active" && (
+                      {course.isSaved && savedStatus === "active" && (
                         <Badge variant="outline" className="text-xs bg-blue-500/20 text-blue-400 border-blue-500/30">
                           Saved
                         </Badge>
@@ -632,7 +662,7 @@ const CareerRecommendations: React.FC = () => {
                       View Course
                     </Button>
                     
-                    {!isSaved ? (
+                    {!course.isSaved ? (
                       <Button 
                         size="sm" 
                         variant="outline" 
@@ -660,7 +690,7 @@ const CareerRecommendations: React.FC = () => {
             })
           )}
           
-          {courses.length > 0 && (
+          {(aiCourses.length > 0 || savedCourses.length > 0) && (
             <Button 
               variant="outline" 
               className="w-full glass-button bg-transparent"
