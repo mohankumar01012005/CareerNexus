@@ -14,22 +14,17 @@ const router = express.Router()
 // All routes require HR authentication
 router.use(requireHR)
 
-// Get all employees
+// Employee management routes
 router.get("/employees", getAllEmployees)
-
-// Get employee by ID
 router.get("/employees/:id", getEmployeeById)
+router.put("/employees/status", updateEmployeeStatus)
 
-// Get pending career goals
+// Career goals routes
 router.get("/career-goals/pending", getPendingCareerGoals)
-
-// Update career goal status
 router.put("/career-goals/status", updateCareerGoalStatus)
-
-// Get career goals statistics
 router.get("/career-goals/stats", getCareerGoalsStats)
 
-// Update employee status
-router.put("/employees/status", updateEmployeeStatus)
+// Job management routes (import from jobRoutes)
+router.use("/jobs", require("./jobRoutes"))
 
 module.exports = router

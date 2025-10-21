@@ -1,5 +1,32 @@
 const mongoose = require('mongoose');
 
+const jobApplicationSchema = new mongoose.Schema({
+  employee: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Employee',
+    required: true
+  },
+  appliedDate: {
+    type: Date,
+    default: Date.now
+  },
+  status: {
+    type: String,
+    enum: ['pending', 'under_review', 'approved', 'rejected'],
+    default: 'pending'
+  },
+  resumeType: {
+    type: String,
+    enum: ['current', 'updated'],
+    required: true
+  },
+  updatedResume: String, // URL to updated resume if provided
+  matchPercentage: Number,
+  skills: [String],
+  experience: String,
+  applicationData: mongoose.Schema.Types.Mixed // Store complete employee data at time of application
+});
+
 const jobSchema = new mongoose.Schema({
   title: {
     type: String,
@@ -14,9 +41,15 @@ const jobSchema = new mongoose.Schema({
     type: String,
     required: true
   },
-  salaryRange: {
-    min: Number,
-    max: Number
+  type: {
+    type: String,
+    required: true,
+    enum: ['Full-time', 'Part-time', 'Contract', 'Internship'],
+    default: 'Full-time'
+  },
+  salary: {
+    type: String,
+    required: true
   },
   description: {
     type: String,
@@ -29,38 +62,39 @@ const jobSchema = new mongoose.Schema({
     enum: ['draft', 'active', 'closed'],
     default: 'draft'
   },
-  applicationDeadline: Date,
+  postedDate: {
+    type: Date,
+    default: Date.now
+  },
+  deadline: {
+    type: Date,
+    required: true
+  },
   createdBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'HR',
     required: true
   },
-  applicants: [{
-    employee: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Employee'
-    },
-    appliedAt: {
-      type: Date,
-      default: Date.now
-    },
-    status: {
-      type: String,
-      enum: ['pending', 'reviewed', 'approved', 'rejected'],
-      default: 'pending'
-    },
-    matchPercentage: Number,
-    skillsAlignment: [{
-      skill: String,
-      match: Boolean
-    }]
-  }],
-  totalApplications: {
-    type: Number,
-    default: 0
-  }
+  applications: [jobApplicationSchema],
+  referrals: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'JobReferral'
+  }]
 }, {
   timestamps: true
 });
+
+// Virtual for total applications count
+jobSchema.virtual('totalApplications').get(function() {
+  return this.applications.length;
+});
+
+// Virtual for pending applications count
+jobSchema.virtual('pendingApplications').get(function() {
+  return this.applications.filter(app => app.status === 'pending').length;
+});
+
+// Index for active jobs query
+jobSchema.index({ status: 1, deadline: 1 });
 
 module.exports = mongoose.model('Job', jobSchema);
