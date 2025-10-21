@@ -1,6 +1,6 @@
 "use client"
 
-import type React from "react"
+import React from "react"
 import { useState, useEffect } from "react"
 import { useAuth } from "../../contexts/AuthContext"
 import { useSavedCourses } from "../../contexts/SavedCoursesContext"
@@ -279,7 +279,7 @@ const Recommendations: React.FC = () => {
   const navigate = useNavigate()
   const [careerGoals, setCareerGoals] = useState<CareerGoal[]>([])
   const [resumeData, setResumeData] = useState<ResumeData | null>(null)
-  const [courses, setCourses] = useState<Course[]>([])
+  const [aiCourses, setAiCourses] = useState<Course[]>([])
   const [filteredCourses, setFilteredCourses] = useState<Course[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
@@ -326,12 +326,10 @@ const Recommendations: React.FC = () => {
           goalsResponse.success ? goalsResponse.careerGoals : [],
           resumeResponse.success && resumeResponse.resume_data ? resumeResponse.resume_data[0] as ResumeData : null
       )
-      setCourses(generatedCourses)
-      setFilteredCourses(generatedCourses)
+      setAiCourses(generatedCourses)
     } catch (error) {
       console.error("Failed to fetch recommendations data:", error)
-      setCourses([])
-      setFilteredCourses([])
+      setAiCourses([])
     } finally {
       setIsLoading(false)
     }
@@ -343,9 +341,36 @@ const Recommendations: React.FC = () => {
     refreshSavedCourses()
   }, [credentials])
 
+  // Combine AI courses and saved courses for display
+  const allCourses = React.useMemo(() => {
+    // Convert saved courses to Course format for consistent display
+    const savedAsCourses: Course[] = savedCourses.map(sc => ({
+      title: sc.title,
+      provider: sc.provider,
+      duration: sc.duration,
+      costType: sc.costType,
+      skillsCovered: sc.skillsCovered,
+      enrollLink: sc.enrollLink,
+      rating: sc.rating,
+      level: sc.level,
+      certificate: sc.certificate,
+      description: sc.description
+    }))
+
+    // Combine and remove duplicates (prioritize saved courses)
+    const combined = [...savedAsCourses]
+    aiCourses.forEach(aiCourse => {
+      if (!savedCourses.some(sc => sc.title === aiCourse.title && sc.provider === aiCourse.provider)) {
+        combined.push(aiCourse)
+      }
+    })
+    
+    return combined
+  }, [aiCourses, savedCourses])
+
   // Filter courses based on search and filter criteria
   useEffect(() => {
-    let result = courses
+    let result = allCourses
 
     // Apply cost filter
     if (filter === "free") {
@@ -372,7 +397,7 @@ const Recommendations: React.FC = () => {
     }
 
     setFilteredCourses(result)
-  }, [searchTerm, filter, providerFilter, courses, savedCourses])
+  }, [searchTerm, filter, providerFilter, allCourses])
 
   // Generate course recommendations
   const generateRecommendations = async (goals: CareerGoal[], resume: ResumeData | null): Promise<Course[]> => {
@@ -529,7 +554,7 @@ const Recommendations: React.FC = () => {
     return savedCourses.find(sc => sc.title === course.title && sc.provider === course.provider)
   }
 
-  const providers = [...new Set(courses.map(course => course.provider))]
+  const providers = [...new Set(allCourses.map(course => course.provider))]
 
   if (isLoading) {
     return (
@@ -662,7 +687,7 @@ const Recommendations: React.FC = () => {
       {/* Results Count */}
       <div className="flex items-center justify-between">
         <p className="text-foreground-secondary text-sm">
-          Showing {filteredCourses.length} of {courses.length} courses
+          Showing {filteredCourses.length} of {allCourses.length} courses
         </p>
         <div className="flex items-center space-x-2 text-xs text-foreground-secondary">
           <Filter className="w-3 h-3" />
