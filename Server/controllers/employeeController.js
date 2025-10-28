@@ -818,6 +818,183 @@ const deleteCareerGoalByCredentials = async (req, res) => {
   }
 }
 
+
+// Add these functions to employeeController.js
+
+// NEW: Get employee profile by credentials
+const getEmployeeProfileByCredentials = async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+      return res.status(400).json({
+        success: false,
+        message: "Email and password are required",
+      });
+    }
+
+    // Find user by email
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    // Verify password
+    const isPasswordValid = await user.comparePassword(password);
+    if (!isPasswordValid) {
+      return res.status(401).json({
+        success: false,
+        message: "Invalid password",
+      });
+    }
+
+    // Find employee by user ID
+    const employee = await Employee.findOne({ user: user._id });
+    if (!employee) {
+      return res.status(404).json({
+        success: false,
+        message: "Employee profile not found",
+      });
+    }
+
+    // Format the response
+    const profileData = {
+      success: true,
+      profile: {
+        personalInfo: {
+          fullName: employee.fullName,
+          email: user.email,
+          phoneNumber: employee.phoneNumber,
+          avatar: employee.avatar,
+          department: employee.department,
+          role: employee.role,
+          joiningDate: employee.joiningDate,
+          tenure: employee.tenure
+        },
+        professionalInfo: {
+          currentRole: employee.role,
+          department: employee.department,
+          tenure: employee.tenure,
+          careerReadinessScore: employee.careerReadinessScore,
+          achievements: employee.achievements || []
+        },
+        skills: employee.skills || [],
+        careerGoals: employee.careerGoals || [],
+        resume: {
+          resumeLink: employee.resume_link,
+          resumeData: employee.resume_data || []
+        },
+        savedCourses: employee.savedCourses || [],
+        systemInfo: {
+          userType: user.userType,
+          lastLogin: user.lastLogin,
+          memberSince: user.createdAt,
+          isActive: employee.isActive
+        }
+      }
+    };
+
+    return res.json(profileData);
+  } catch (error) {
+    console.error("Get employee profile by credentials error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Server error while fetching employee profile",
+    });
+  }
+};
+
+// NEW: Update employee profile by credentials
+const updateEmployeeProfileByCredentials = async (req, res) => {
+  try {
+    const { email, password, updates } = req.body
+
+    if (!email || !password) {
+      return res.status(400).json({
+        success: false,
+        message: "Email and password are required",
+      })
+    }
+
+    if (!updates) {
+      return res.status(400).json({
+        success: false,
+        message: "Updates are required",
+      })
+    }
+
+    // Find user by email
+    const user = await User.findOne({ email })
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      })
+    }
+
+    // Verify password
+    const isPasswordValid = await user.comparePassword(password)
+    if (!isPasswordValid) {
+      return res.status(401).json({
+        success: false,
+        message: "Invalid password",
+      })
+    }
+
+    // Find employee by user ID
+    const employee = await Employee.findOne({ user: user._id })
+    if (!employee) {
+      return res.status(404).json({
+        success: false,
+        message: "Employee profile not found",
+      })
+    }
+
+    // Update allowed fields with proper validation
+    if (updates.phoneNumber !== undefined) {
+      employee.phoneNumber = updates.phoneNumber
+    }
+
+    if (updates.avatar !== undefined) {
+      // Allow empty string to remove avatar, or URL to set new avatar
+      employee.avatar = updates.avatar
+    }
+
+    if (updates.skills !== undefined && Array.isArray(updates.skills)) {
+      employee.skills = updates.skills
+    }
+
+    // Save the updated employee
+    await employee.save()
+
+    return res.json({
+      success: true,
+      message: "Profile updated successfully",
+      profile: {
+        personalInfo: {
+          fullName: employee.fullName,
+          email: user.email,
+          phoneNumber: employee.phoneNumber,
+          avatar: employee.avatar,
+          department: employee.department,
+          role: employee.role,
+          joiningDate: employee.joiningDate,
+          tenure: employee.tenure,
+        },
+        skills: employee.skills,
+      },
+    })
+  } catch (error) {
+    console.error("Update employee profile by credentials error:", error)
+    return res.status(500).json({
+      success: false,
+      message: "Server error while updating employee profile",
+    })
+  }
+}
 // Helper function to calculate readiness score
 const calculateReadinessScore = (employee) => {
   // Mock calculation based on skills proficiency and career goals
@@ -844,4 +1021,6 @@ module.exports = {
   addCareerGoalByCredentials,
   updateCareerGoalsByCredentials,
   deleteCareerGoalByCredentials,
+   getEmployeeProfileByCredentials,        // NEW
+  updateEmployeeProfileByCredentials,     // NEW
 }

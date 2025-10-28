@@ -150,7 +150,7 @@ const Header: React.FC<HeaderProps> = ({ title, subtitle, onMenuClick }) => {
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="relative h-8 w-8 rounded-full">
               <Avatar className="h-8 w-8 ring-2 ring-primary/20">
-                <AvatarImage src={user && "avatar" in user ? user.avatar : undefined} alt={user?.name} />
+                <AvatarImage src={user?.avatar} alt={user?.name} />
                 <AvatarFallback className="bg-gradient-primary text-white text-xs">
                   {user?.name ? getInitials(user.name) : "U"}
                 </AvatarFallback>
@@ -168,10 +168,10 @@ const Header: React.FC<HeaderProps> = ({ title, subtitle, onMenuClick }) => {
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator className="bg-glass-border/30" />
-            <DropdownMenuItem className="hover:bg-primary/10">
-              <User className="mr-2 h-4 w-4" />
-              <span>Profile</span>
-            </DropdownMenuItem>
+       <DropdownMenuItem className="hover:bg-primary/10" onClick={() => window.location.href = '/employee/profile'}>
+  <User className="mr-2 h-4 w-4" />
+  <span>Profile</span>
+</DropdownMenuItem>
             <DropdownMenuItem className="hover:bg-primary/10">
               <Settings className="mr-2 h-4 w-4" />
               <span>Settings</span>
