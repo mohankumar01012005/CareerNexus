@@ -1,3 +1,5 @@
+// [file name]: employees.js (Backend - fix duplicate route)
+
 const express = require("express")
 const { authMiddleware, requireEmployee } = require("../middleware/auth")
 const {
@@ -16,6 +18,8 @@ const {
   addCareerGoalByCredentials,
   updateCareerGoalsByCredentials,
   deleteCareerGoalByCredentials,
+  getEmployeeProfileByCredentials,
+  updateEmployeeProfileByCredentials,
 } = require("../controllers/employeeController")
 
 const router = express.Router()
@@ -29,6 +33,8 @@ router.post("/get-career-goals", getCareerGoalsByCredentials)
 router.post("/add-career-goal", addCareerGoalByCredentials)
 router.post("/update-career-goals", updateCareerGoalsByCredentials)
 router.post("/delete-career-goal", deleteCareerGoalByCredentials)
+router.post("/get-profile", getEmployeeProfileByCredentials)
+router.post("/update-profile", updateEmployeeProfileByCredentials)
 
 // Protect only employee-session routes after this point
 router.use(authMiddleware, requireEmployee)

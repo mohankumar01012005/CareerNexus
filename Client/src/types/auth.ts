@@ -11,8 +11,12 @@ export interface Employee {
   department: string
   readinessScore: number
   joinDate: string
-  phone?: string
+  phoneNumber?: string
   password?: string // For HR to set initial password
+  achievements: string[]
+  phone?: string
+  
+
 }
 
 export interface Skill {
@@ -53,6 +57,17 @@ export interface HRUser {
   email: string
   name: string
   role: "hr"
+  phoneNumber?: string
+  avatar?: string
+  department: string
+  currentRole: string
+  joinDate: string
+  readinessScore: number
+  achievements: string[]
+  skills: Skill[]
+  phone?: string
+  
+
 }
 
 export interface LoginCredentials {
