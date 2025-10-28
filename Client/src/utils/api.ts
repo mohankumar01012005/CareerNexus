@@ -437,123 +437,123 @@ export const getCareerGoalsStatsHR = async () => {
 
 // Course Management APIs
 export const saveCourseApi = async (params: {
-  email: string;
-  password: string;
-  course: any;
+  email: string
+  password: string
+  course: any
 }) => {
-  const endpoint = `http://localhost:5000/api/employee/save-course`;
+  const endpoint = `http://localhost:5000/api/employee/save-course`
   console.log("[api] saveCourseApi: request", {
     endpoint,
     email: params.email,
     courseTitle: params.course.title,
-  });
+  })
 
   try {
     const resp = await fetch(endpoint, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(params),
-    });
+    })
 
-    const result = await resp.json();
-    console.log("[api] saveCourseApi: response", result);
-    return result;
+    const result = await resp.json()
+    console.log("[api] saveCourseApi: response", result)
+    return result
   } catch (error) {
-    console.error("[api] saveCourseApi: error", error);
-    throw error;
+    console.error("[api] saveCourseApi: error", error)
+    throw error
   }
-};
+}
 
 export const getSavedCoursesApi = async (params: {
-  email: string;
-  password: string;
+  email: string
+  password: string
 }) => {
-  const endpoint = `http://localhost:5000/api/employee/my-saved-courses`;
+  const endpoint = `http://localhost:5000/api/employee/my-saved-courses`
   console.log("[api] getSavedCoursesApi: request", {
     endpoint,
     email: params.email,
-  });
+  })
 
   try {
     const resp = await fetch(endpoint, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(params),
-    });
+    })
 
-    const result = await resp.json();
-    console.log("[api] getSavedCoursesApi: response", result);
-    return result;
+    const result = await resp.json()
+    console.log("[api] getSavedCoursesApi: response", result)
+    return result
   } catch (error) {
-    console.error("[api] getSavedCoursesApi: error", error);
-    throw error;
+    console.error("[api] getSavedCoursesApi: error", error)
+    throw error
   }
-};
+}
 
 export const completeCourseApi = async (params: {
-  email: string;
-  password: string;
-  courseId: string;
-  proof: { file?: string; link?: string };
+  email: string
+  password: string
+  courseId: string
+  proof: { file?: string; link?: string }
 }) => {
-  const endpoint = `http://localhost:5000/api/employee/complete-course`;
+  const endpoint = `http://localhost:5000/api/employee/complete-course`
   console.log("[api] completeCourseApi: request", {
     endpoint,
     email: params.email,
     courseId: params.courseId,
-  });
+  })
 
   try {
     const resp = await fetch(endpoint, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(params),
-    });
+    })
 
-    const result = await resp.json();
-    console.log("[api] completeCourseApi: response", result);
-    return result;
+    const result = await resp.json()
+    console.log("[api] completeCourseApi: response", result)
+    return result
   } catch (error) {
-    console.error("[api] completeCourseApi: error", error);
-    throw error;
+    console.error("[api] completeCourseApi: error", error)
+    throw error
   }
-};
+}
 
 export const deleteCourseApi = async (params: {
-  email: string;
-  password: string;
-  courseId: string;
+  email: string
+  password: string
+  courseId: string
 }) => {
-  const endpoint = `http://localhost:5000/api/employee/delete-course`;
+  const endpoint = `http://localhost:5000/api/employee/delete-course`
   console.log("[api] deleteCourseApi: request", {
     endpoint,
     email: params.email,
     courseId: params.courseId,
-  });
+  })
 
   try {
     const resp = await fetch(endpoint, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(params),
-    });
+    })
 
-    const result = await resp.json();
-    console.log("[api] deleteCourseApi: response", result);
-    return result;
+    const result = await resp.json()
+    console.log("[api] deleteCourseApi: response", result)
+    return result
   } catch (error) {
-    console.error("[api] deleteCourseApi: error", error);
-    throw error;
+    console.error("[api] deleteCourseApi: error", error)
+    throw error
   }
-};
+}
 
 // HR Course Management APIs
 export const getEmployeeSavedCoursesHR = async (employeeEmail: string) => {
-  const endpoint = `http://localhost:5000/api/hr/get-saved-courses`;
+  const endpoint = `http://localhost:5000/api/hr/get-saved-courses`
   console.log("[HR][api] getEmployeeSavedCoursesHR: request", {
     endpoint,
     employeeEmail,
-  });
+  })
 
   try {
     const resp = await fetch(endpoint, {
@@ -563,69 +563,68 @@ export const getEmployeeSavedCoursesHR = async (employeeEmail: string) => {
         Authorization: createBasicAuthHeader(HR_CREDENTIALS.EMAIL, HR_CREDENTIALS.PASSWORD),
       },
       body: JSON.stringify({ employeeEmail }),
-    });
+    })
 
     if (!resp.ok) {
-      throw new Error(`HTTP error! status: ${resp.status}`);
+      throw new Error(`HTTP error! status: ${resp.status}`)
     }
 
-    const result = await resp.json();
-    console.log("[HR][api] getEmployeeSavedCoursesHR: response", result);
-    return result;
+    const result = await resp.json()
+    console.log("[HR][api] getEmployeeSavedCoursesHR: response", result)
+    return result
   } catch (error) {
-    console.error("[HR][api] getEmployeeSavedCoursesHR: error", error);
-    throw error;
+    console.error("[HR][api] getEmployeeSavedCoursesHR: error", error)
+    throw error
   }
-};
+}
 
 // Certificate Upload Function (similar to resume upload)
 export const uploadCertificate = async (file: File, bucket = "SkillCompass") => {
-  console.log("[api] Starting certificate upload process...", { 
-    fileName: file.name, 
-    fileSize: file.size, 
-    bucket 
-  });
+  console.log("[api] Starting certificate upload process...", {
+    fileName: file.name,
+    fileSize: file.size,
+    bucket,
+  })
 
   try {
-    const timestamp = Date.now();
-    const fileExtension = file.name.split(".").pop();
-    const fileName = `certificate_${timestamp}.${fileExtension}`;
+    const timestamp = Date.now()
+    const fileExtension = file.name.split(".").pop()
+    const fileName = `certificate_${timestamp}.${fileExtension}`
 
-    console.log("[api] Generated certificate filename:", fileName);
+    console.log("[api] Generated certificate filename:", fileName)
 
     const { data, error } = await supabase.storage.from(bucket).upload(fileName, file, {
       cacheControl: "3600",
       upsert: false,
       contentType: file.type || "application/octet-stream",
-    });
+    })
 
     if (error) {
-      console.error("[api] Certificate upload error:", error);
-      throw error;
+      console.error("[api] Certificate upload error:", error)
+      throw error
     }
 
-    console.log("[api] Certificate uploaded successfully:", data);
+    console.log("[api] Certificate uploaded successfully:", data)
 
-    const { data: publicUrlData } = supabase.storage.from(bucket).getPublicUrl(fileName);
-    console.log("[api] Certificate public URL generated:", publicUrlData.publicUrl);
+    const { data: publicUrlData } = supabase.storage.from(bucket).getPublicUrl(fileName)
+    console.log("[api] Certificate public URL generated:", publicUrlData.publicUrl)
 
     return {
       success: true,
       fileName,
       publicUrl: publicUrlData.publicUrl,
       path: data.path,
-    };
+    }
   } catch (error) {
-    console.error("[api] Certificate upload failed:", error);
+    console.error("[api] Certificate upload failed:", error)
     return {
       success: false,
       error: error instanceof Error ? error.message : "Unknown error occurred",
-    };
+    }
   }
-};
+}
 
 // utils/api.ts (add these functions)
-
 
 // HR: Get pending course completions
 export const getPendingCourseCompletions = async (): Promise<{
@@ -634,19 +633,19 @@ export const getPendingCourseCompletions = async (): Promise<{
   count: number
 }> => {
   try {
-    const response = await fetch('/api/hr/pending-course-completions', {
+    const response = await fetch("/api/hr/pending-course-completions", {
       headers: {
         Authorization: `Basic ${btoa(`${process.env.HR_EMAIL}:${process.env.HR_PASSWORD}`)}`,
       },
     })
 
     if (!response.ok) {
-      throw new Error('Failed to fetch pending course completions')
+      throw new Error("Failed to fetch pending course completions")
     }
 
     return await response.json()
   } catch (error) {
-    console.error('Error fetching pending course completions:', error)
+    console.error("Error fetching pending course completions:", error)
     return { success: false, pendingCompletions: [], count: 0 }
   }
 }
@@ -655,138 +654,96 @@ export const getPendingCourseCompletions = async (): Promise<{
 export const updateCourseCompletionStatus = async (data: {
   courseId: string
   employeeId: string
-  status: 'completed' | 'active'
+  status: "completed" | "active"
   notes?: string
 }): Promise<{ success: boolean; message?: string }> => {
   try {
-    const response = await fetch('/api/hr/update-course-status', {
-      method: 'PUT',
+    const response = await fetch("/api/hr/update-course-status", {
+      method: "PUT",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
         Authorization: `Basic ${btoa(`${process.env.HR_EMAIL}:${process.env.HR_PASSWORD}`)}`,
       },
       body: JSON.stringify(data),
     })
 
     if (!response.ok) {
-      throw new Error('Failed to update course status')
+      throw new Error("Failed to update course status")
     }
 
     return await response.json()
   } catch (error) {
-    console.error('Error updating course status:', error)
-    return { success: false, message: 'Failed to update course status' }
+    console.error("Error updating course status:", error)
+    return { success: false, message: "Failed to update course status" }
   }
 }
 
 export { HR_CREDENTIALS, createBasicAuthHeader }
 
-
-
 // Employee Job APIs
 export const getActiveJobsForEmployee = async (params: {
-  email: string;
-  password: string;
+  email: string
+  password: string
 }) => {
-  const endpoint = `${API_CONFIG.BASE_URL}/employee/jobs/active-jobs`;
+  const endpoint = `${API_CONFIG.BASE_URL}/employee/jobs/active-jobs`
   console.log("[api] getActiveJobsForEmployee: request", {
     endpoint,
     hasEmail: !!params?.email,
     hasPassword: !!params?.password,
-  });
+  })
 
   try {
     const resp = await fetch(endpoint, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(params),
-    });
+    })
 
-    const result = await resp.json();
-    console.log("[api] getActiveJobsForEmployee: response", result);
-    return result;
+    const result = await resp.json()
+    console.log("[api] getActiveJobsForEmployee: response", result)
+    return result
   } catch (error) {
-    console.error("[api] getActiveJobsForEmployee: error", error);
-    throw error;
+    console.error("[api] getActiveJobsForEmployee: error", error)
+    throw error
   }
-};
+}
 
 export const submitJobSwitchRequest = async (params: {
-  email: string;
-  password: string;
+  email: string
+  password: string
 }) => {
-  const endpoint = `${API_CONFIG.BASE_URL}/employee/jobs/job-switch-request`;
+  const endpoint = `${API_CONFIG.BASE_URL}/employee/jobs/job-switch-request`
   console.log("[api] submitJobSwitchRequest: request", {
     endpoint,
     hasEmail: !!params?.email,
     hasPassword: !!params?.password,
-  });
+  })
 
   try {
     const resp = await fetch(endpoint, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(params),
-    });
+    })
 
-    const result = await resp.json();
-    console.log("[api] submitJobSwitchRequest: response", result);
-    return result;
+    const result = await resp.json()
+    console.log("[api] submitJobSwitchRequest: response", result)
+    return result
   } catch (error) {
-    console.error("[api] submitJobSwitchRequest: error", error);
-    throw error;
+    console.error("[api] submitJobSwitchRequest: error", error)
+    throw error
   }
-};
-
-
-
-export const referCandidateApi = async (params: {
-  email: string;
-  password: string;
-  jobId: string;
-  candidateName: string;
-  candidateEmail: string;
-  candidatePhone?: string;
-  candidateResume: string;
-  candidateSkills?: string[];
-  candidateExperience?: string;
-}) => {
-  const endpoint = `${API_CONFIG.BASE_URL}/employee/jobs/${params.jobId}/refer`;
-  console.log("[api] referCandidateApi: request", {
-    endpoint,
-    hasEmail: !!params?.email,
-    hasPassword: !!params?.password,
-    jobId: params.jobId,
-    candidateName: params.candidateName,
-  });
-
-  try {
-    const resp = await fetch(endpoint, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(params),
-    });
-
-    const result = await resp.json();
-    console.log("[api] referCandidateApi: response", result);
-    return result;
-  } catch (error) {
-    console.error("[api] referCandidateApi: error", error);
-    throw error;
-  }
-};
-
-
+}
 // Add to api.ts file in the HR APIs section
 
 // HR Job Switch Request APIs
 export const updateJobSwitchRequestStatusHR = async (params: {
-  requestId: string;
-  status: 'approved' | 'rejected';
-  rejectionReason?: string;
+  requestId: string
+  status: "approved" | "rejected"
+  rejectionReason?: string
 }) => {
-  const endpoint = `${API_CONFIG.BASE_URL}/hr/job-management/job-switch-requests/status`;
-  console.log("[HR][api] updateJobSwitchRequestStatusHR: request", { endpoint, params });
+  const endpoint = `${API_CONFIG.BASE_URL}/hr/job-management/job-switch-requests/status`
+  console.log("[HR][api] updateJobSwitchRequestStatusHR: request", { endpoint, params })
 
   try {
     const resp = await fetch(endpoint, {
@@ -796,57 +753,145 @@ export const updateJobSwitchRequestStatusHR = async (params: {
         Authorization: createBasicAuthHeader(HR_CREDENTIALS.EMAIL, HR_CREDENTIALS.PASSWORD),
       },
       body: JSON.stringify(params),
-    });
+    })
 
     if (!resp.ok) {
-      throw new Error(`HTTP error! status: ${resp.status}`);
+      throw new Error(`HTTP error! status: ${resp.status}`)
     }
 
-    const result = await resp.json();
-    console.log("[HR][api] updateJobSwitchRequestStatusHR: response", result);
-    return result;
+    const result = await resp.json()
+    console.log("[HR][api] updateJobSwitchRequestStatusHR: response", result)
+    return result
   } catch (error) {
-    console.error("[HR][api] updateJobSwitchRequestStatusHR: error", error);
-    throw error;
+    console.error("[HR][api] updateJobSwitchRequestStatusHR: error", error)
+    throw error
   }
-};
-
-
-
+}
 
 // Employee Job Application API
 export const applyForJobApi = async (params: {
-  email: string;
-  password: string;
-  jobId: string;
-  resumeType: 'current' | 'updated';
-  updatedResume?: string;
+  email: string
+  password: string
+  jobId: string
+  resumeType: "current" | "updated"
+  updatedResume?: string
 }) => {
-  const endpoint = `${API_CONFIG.BASE_URL}/employee/jobs/${params.jobId}/apply`;
+  const endpoint = `${API_CONFIG.BASE_URL}/employee/jobs/${params.jobId}/apply`
   console.log("[api] applyForJobApi: request", {
     endpoint,
     hasEmail: !!params?.email,
     hasPassword: !!params?.password,
     jobId: params.jobId,
     resumeType: params.resumeType,
-  });
+  })
 
   try {
     const resp = await fetch(endpoint, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(params),
-    });
+    })
 
     if (!resp.ok) {
-      throw new Error(`HTTP error! status: ${resp.status}`);
+      throw new Error(`HTTP error! status: ${resp.status}`)
     }
 
-    const result = await resp.json();
-    console.log("[api] applyForJobApi: response", result);
-    return result;
+    const result = await resp.json()
+    console.log("[api] applyForJobApi: response", result)
+    return result
   } catch (error) {
-    console.error("[api] applyForJobApi: error", error);
-    throw error;
+    console.error("[api] applyForJobApi: error", error)
+    throw error
   }
-};
+}
+
+// Add to utils/api.ts
+export const getEmployeeProfile = async (params: { email: string; password: string }) => {
+  const endpoint = `http://localhost:5000/api/employee/get-profile`
+  console.log("[api] getEmployeeProfile: request", {
+    endpoint,
+    hasEmail: !!params?.email,
+    hasPassword: !!params?.password,
+  })
+
+  try {
+    const resp = await fetch(endpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(params),
+    })
+
+    if (!resp.ok) {
+      throw new Error(`HTTP error! status: ${resp.status}`)
+    }
+
+    const result = await resp.json()
+    console.log("[api] getEmployeeProfile: response", result)
+    return result
+  } catch (error) {
+    console.error("[api] getEmployeeProfile: error", error)
+    throw error
+  }
+}
+
+export const updateEmployeeProfile = async (params: {
+  email: string
+  password: string
+  updates: {
+    phoneNumber?: string
+    avatar?: string
+    skills?: any[]
+  }
+}) => {
+  const endpoint = `http://localhost:5000/api/employee/update-profile`
+  console.log("[api] updateEmployeeProfile: request", {
+    endpoint,
+    hasEmail: !!params?.email,
+    hasPassword: !!params?.password,
+    updates: params.updates,
+  })
+
+  try {
+    const updatePayload: any = {
+      email: params.email,
+      password: params.password,
+      updates: {},
+    }
+
+    // Only include fields that are explicitly provided
+    if (params.updates.phoneNumber !== undefined) {
+      updatePayload.updates.phoneNumber = params.updates.phoneNumber
+    }
+    if (params.updates.avatar !== undefined) {
+      updatePayload.updates.avatar = params.updates.avatar
+    }
+    // Only include skills if they are provided and valid
+    if (params.updates.skills && Array.isArray(params.updates.skills) && params.updates.skills.length > 0) {
+      updatePayload.updates.skills = params.updates.skills
+    }
+
+    const resp = await fetch(endpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(updatePayload),
+    })
+
+    if (!resp.ok) {
+      let errorMessage = `HTTP error! status: ${resp.status}`
+      try {
+        const errorData = await resp.json()
+        errorMessage = errorData.message || errorMessage
+      } catch (e) {
+        // If response is not JSON, use default error message
+      }
+      throw new Error(errorMessage)
+    }
+
+    const result = await resp.json()
+    console.log("[api] updateEmployeeProfile: response", result)
+    return result
+  } catch (error) {
+    console.error("[api] updateEmployeeProfile: error", error)
+    throw error
+  }
+}

@@ -21,6 +21,7 @@ import Settings from "./pages/hr/Settings";
 import DashboardLayout from "./components/layout/DashboardLayout";
 import NotFound from "./pages/NotFound";
 import InternalJobs from "./pages/employee/InternalJobs"; 
+import Profile from "./pages/employee/Profile";
 
 const queryClient = new QueryClient();
 
@@ -75,7 +76,8 @@ const AppRouter: React.FC = () => {
         <Route path="recommendations" element={<Recommendations />} />
         <Route path="simulator" element={<InternalJobs />} /> {/* Updated route */}
         <Route path="notifications" element={<div className="p-8 text-center glass-card"><h2 className="text-2xl font-bold text-gradient-primary">Notifications</h2><p className="text-foreground-secondary mt-2">Coming soon - Real-time updates and alerts</p></div>} />
-        <Route path="profile" element={<div className="p-8 text-center glass-card"><h2 className="text-2xl font-bold text-gradient-primary">Profile Settings</h2><p className="text-foreground-secondary mt-2">Coming soon - Manage your profile and preferences</p></div>} />
+        <Route path="profile" element={<Profile />} />
+        
       </Route>
 
       {/* HR Routes */}

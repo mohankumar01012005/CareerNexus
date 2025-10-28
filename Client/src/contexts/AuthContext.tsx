@@ -1,4 +1,3 @@
-// src/contexts/AuthContext.tsx
 "use client"
 
 // Authentication Context with Backend API Integration
@@ -22,6 +21,7 @@ interface AuthContextType extends AuthState {
   getAllEmployees: () => Employee[]
   // expose last used credentials for employee body-auth routes
   credentials: LoginCredentials | null
+  updateUser: (updatedUser: any) => void // Add this line
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -49,6 +49,7 @@ const mockEmployees: Employee[] = [
       { id: "s4", name: "Leadership", level: 45, category: "Soft Skills", icon: "👑" },
       { id: "s5", name: "Product Strategy", level: 30, category: "Business", icon: "📊" },
     ],
+    achievements: []
   },
   {
     id: "emp-2",
@@ -67,6 +68,7 @@ const mockEmployees: Employee[] = [
       { id: "s8", name: "Prototyping", level: 90, category: "Design", icon: "⚡" },
       { id: "s9", name: "Team Management", level: 60, category: "Leadership", icon: "👥" },
     ],
+    achievements: []
   },
 ]
 
@@ -125,6 +127,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             email: data.user.email,
             name: data.user.profile?.fullName || "HR Manager",
             role: "hr",
+            department: "",
+            currentRole: "",
+            joinDate: "",
+            readinessScore: 0,
+            achievements: [],
+            skills: []
           }
 
           setAuthState({
@@ -142,7 +150,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           }))
           localStorage.removeItem("authCredentials")
         } else {
-          // Transform backend employee data to frontend format
+          // Transform backend employee data to frontend format - FIXED: Include avatar and phoneNumber
           const employee: Employee = {
             id: data.user.id,
             email: data.user.email,
@@ -154,15 +162,17 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
               ? new Date(data.user.profile.joiningDate).toISOString().split("T")[0]
               : new Date().toISOString().split("T")[0],
             phone: data.user.profile?.phoneNumber || "",
+            phoneNumber: data.user.profile?.phoneNumber || "", // Add phoneNumber
+            avatar: data.user.profile?.avatar, // Add avatar
             careerGoals: data.user.profile?.careerGoals?.map((goal: any) => goal.targetRole) || [],
-            skills:
-              data.user.profile?.skills?.map((skill: any, index: number) => ({
-                id: `skill_${index}`,
-                name: skill.name,
-                level: skill.proficiency,
-                category: skill.category,
-                icon: getSkillIcon(skill.category),
-              })) || [],
+            skills: data.user.profile?.skills?.map((skill: any, index: number) => ({
+              id: `skill_${index}`,
+              name: skill.name,
+              level: skill.proficiency,
+              category: skill.category,
+              icon: getSkillIcon(skill.category),
+            })) || [],
+            achievements: []
           }
 
           setAuthState({
@@ -239,14 +249,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           joinDate: data.joinDate,
           phone: data.phone || "",
           careerGoals: [],
-          skills:
-            result.employee.skills?.map((skill: any, index: number) => ({
-              id: `skill_${index}`,
-              name: skill.name,
-              level: skill.proficiency,
-              category: skill.category,
-              icon: getSkillIcon(skill.category),
-            })) || [],
+          skills: result.employee.skills?.map((skill: any, index: number) => ({
+            id: `skill_${index}`,
+            name: skill.name,
+            level: skill.proficiency,
+            category: skill.category,
+            icon: getSkillIcon(skill.category),
+          })) || [],
+          achievements: []
         }
 
         mockEmployees.push(newEmployee)
@@ -294,6 +304,31 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     return iconMap[category] || "🔧"
   }
 
+  // Add updateUser function
+  const updateUser = (updatedUser: any) => {
+    setAuthState(prev => ({
+      ...prev,
+      user: { ...prev.user, ...updatedUser }
+    }));
+    
+    // Update localStorage as well
+    if (typeof window !== "undefined") {
+      const storedAuth = localStorage.getItem("authState")
+      if (storedAuth) {
+        try {
+          const parsed = JSON.parse(storedAuth)
+          const updatedAuth = {
+            ...parsed,
+            user: { ...parsed.user, ...updatedUser }
+          }
+          localStorage.setItem("authState", JSON.stringify(updatedAuth))
+        } catch (e) {
+          console.warn("[v0] Failed to update stored authState:", e)
+        }
+      }
+    }
+  }
+
   return (
     <AuthContext.Provider
       value={{
@@ -304,6 +339,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         createEmployee,
         getAllEmployees,
         credentials,
+        updateUser, // Add to context value
       }}
     >
       {children}
