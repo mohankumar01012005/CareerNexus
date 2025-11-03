@@ -33,7 +33,7 @@ const Sidebar: React.FC = () => {
     { icon: Home, label: 'Dashboard', path: '/employee/dashboard' },
     
     { icon: BookOpen, label: 'Recommendations', path: '/employee/recommendations' },
-    { icon: Target, label: 'Internal Jobs', path: '/employee/Internal Jobs' },
+    { icon: Target, label: 'Internal Jobs', path: '/employee/internal-jobs' },
     { icon: Bell, label: 'Notifications', path: '/employee/notifications' },
     { icon: Settings, label: 'Profile', path: '/employee/profile' },
   ];

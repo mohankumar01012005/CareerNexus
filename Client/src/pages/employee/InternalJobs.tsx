@@ -106,7 +106,7 @@ const InternalJobs: React.FC = () => {
   const [uploadingCandidateResume, setUploadingCandidateResume] = useState(false);
 
   // API Base URL
-  const API_BASE_URL = 'http://localhost:5000/api';
+  const API_BASE_URL = 'https://skillcompassserver.vercel.app/api';
 
   // Fetch active jobs and job switch request status
   const fetchActiveJobs = async () => {

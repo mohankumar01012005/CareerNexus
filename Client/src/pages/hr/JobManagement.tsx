@@ -108,7 +108,7 @@ const JobManagement: React.FC = () => {
   const { toast } = useToast();
 
   // API base URL - using localhost as requested
-  const API_BASE_URL = 'http://localhost:5000/api';
+  const API_BASE_URL = 'https://skillcompassserver.vercel.app/api';
 
   // Get HR credentials from localStorage or use defaults
   const getHRCredentials = () => {

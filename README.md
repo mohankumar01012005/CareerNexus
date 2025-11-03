@@ -67,7 +67,7 @@ SkillCompass is an enterprise-grade AI-powered talent management platform design
 VITE_SUPABASE_URL=your_supabase_project_url
 VITE_SUPABASE_SUPABASE_ANON_KEY=your_supabase_anon_key
 VITE_GEMINI_API_KEY=your_google_gemini_api_key
-VITE_API_BASE_URL=http://localhost:5000/api
+VITE_API_BASE_URL=https://skillcompassserver.vercel.app/api
 ```
 
 #### Server (.env)
@@ -124,7 +124,7 @@ HR_PASSWORD=your_admin_password
 cd Server
 npm run dev
 ```
-The server will start on `http://localhost:5000`
+The server will start on `https://skillcompassserver.vercel.app`
 
 **Terminal 2 - Frontend Client**
 ```bash

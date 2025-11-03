@@ -441,7 +441,7 @@ export const saveCourseApi = async (params: {
   password: string
   course: any
 }) => {
-  const endpoint = `http://localhost:5000/api/employee/save-course`
+  const endpoint = `https://skillcompassserver.vercel.app/api/employee/save-course`
   console.log("[api] saveCourseApi: request", {
     endpoint,
     email: params.email,
@@ -468,7 +468,7 @@ export const getSavedCoursesApi = async (params: {
   email: string
   password: string
 }) => {
-  const endpoint = `http://localhost:5000/api/employee/my-saved-courses`
+  const endpoint = `https://skillcompassserver.vercel.app/api/employee/my-saved-courses`
   console.log("[api] getSavedCoursesApi: request", {
     endpoint,
     email: params.email,
@@ -496,7 +496,7 @@ export const completeCourseApi = async (params: {
   courseId: string
   proof: { file?: string; link?: string }
 }) => {
-  const endpoint = `http://localhost:5000/api/employee/complete-course`
+  const endpoint = `https://skillcompassserver.vercel.app/api/employee/complete-course`
   console.log("[api] completeCourseApi: request", {
     endpoint,
     email: params.email,
@@ -524,7 +524,7 @@ export const deleteCourseApi = async (params: {
   password: string
   courseId: string
 }) => {
-  const endpoint = `http://localhost:5000/api/employee/delete-course`
+  const endpoint = `https://skillcompassserver.vercel.app/api/employee/delete-course`
   console.log("[api] deleteCourseApi: request", {
     endpoint,
     email: params.email,
@@ -549,7 +549,7 @@ export const deleteCourseApi = async (params: {
 
 // HR Course Management APIs
 export const getEmployeeSavedCoursesHR = async (employeeEmail: string) => {
-  const endpoint = `http://localhost:5000/api/hr/get-saved-courses`
+  const endpoint = `https://skillcompassserver.vercel.app/api/hr/get-saved-courses`
   console.log("[HR][api] getEmployeeSavedCoursesHR: request", {
     endpoint,
     employeeEmail,
@@ -807,7 +807,7 @@ export const applyForJobApi = async (params: {
 
 // Add to utils/api.ts
 export const getEmployeeProfile = async (params: { email: string; password: string }) => {
-  const endpoint = `http://localhost:5000/api/employee/get-profile`
+  const endpoint = `https://skillcompassserver.vercel.app/api/employee/get-profile`
   console.log("[api] getEmployeeProfile: request", {
     endpoint,
     hasEmail: !!params?.email,
@@ -843,7 +843,7 @@ export const updateEmployeeProfile = async (params: {
     skills?: any[]
   }
 }) => {
-  const endpoint = `http://localhost:5000/api/employee/update-profile`
+  const endpoint = `https://skillcompassserver.vercel.app/api/employee/update-profile`
   console.log("[api] updateEmployeeProfile: request", {
     endpoint,
     hasEmail: !!params?.email,
