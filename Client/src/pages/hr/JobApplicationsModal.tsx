@@ -78,7 +78,7 @@ const JobApplicationsModal: React.FC<JobApplicationsModalProps> = ({ job, isOpen
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
-  const API_BASE_URL = 'http://localhost:5000/api';
+  const API_BASE_URL = 'https://skillcompassserver.vercel.app/api';
 
   // Get HR credentials
   const getHRCredentials = () => {
