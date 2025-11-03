@@ -22,10 +22,12 @@ import {
   Download,
   UserPlus,
 } from "lucide-react"
+import { useNavigate } from "react-router-dom"
 
 const HRDashboard: React.FC = () => {
   const { getAllEmployees } = useAuth()
   const employees = getAllEmployees()
+  const navigate = useNavigate()
 
   const kpiData = {
     totalEmployees: employees.length,
@@ -100,6 +102,23 @@ const HRDashboard: React.FC = () => {
       default:
         return <Users className="w-4 h-4 text-foreground-secondary" />
     }
+  }
+
+  // Navigation handlers
+  const handleAddEmployee = () => {
+    navigate("/hr/employees")
+  }
+
+  const handlePostInternalJob = () => {
+    navigate("/hr/jobs")
+  }
+
+  const handleReviewApprovals = () => {
+    navigate("/hr/approvals")
+  }
+
+  const handleGenerateReport = () => {
+    navigate("/hr/analytics")
   }
 
   return (
@@ -300,19 +319,31 @@ const HRDashboard: React.FC = () => {
             <CardTitle className="text-lg">Quick Actions</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            <Button className="btn-gradient-primary w-full justify-start">
+            <Button 
+              className="btn-gradient-primary w-full justify-start"
+              onClick={handleAddEmployee}
+            >
               <UserPlus className="w-4 h-4 mr-2" />
               Add New Employee
             </Button>
-            <Button className="glass-button w-full justify-start">
+            <Button 
+              className="glass-button w-full justify-start"
+              onClick={handlePostInternalJob}
+            >
               <Briefcase className="w-4 h-4 mr-2" />
               Post Internal Job
             </Button>
-            <Button className="glass-button w-full justify-start">
+            <Button 
+              className="glass-button w-full justify-start"
+              onClick={handleGenerateReport}
+            >
               <BarChart3 className="w-4 h-4 mr-2" />
               Generate Report
             </Button>
-            <Button className="glass-button w-full justify-start">
+            <Button 
+              className="glass-button w-full justify-start"
+              onClick={handleReviewApprovals}
+            >
               <Award className="w-4 h-4 mr-2" />
               Review Approvals
             </Button>

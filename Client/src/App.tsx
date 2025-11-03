@@ -10,7 +10,7 @@ import { SavedCoursesProvider } from "./contexts/SavedCoursesContext";
 // Pages
 import Login from "./pages/Login";
 import EmployeeDashboard from "./pages/employee/EmployeeDashboard";
-import CareerCompass from "./pages/employee/CareerCompass";
+
 import Recommendations from "./pages/employee/Recommendations";
 import HRDashboard from "./pages/hr/HRDashboard";
 import EmployeeExplorer from "./pages/hr/EmployeeExplorer";
@@ -72,9 +72,9 @@ const AppRouter: React.FC = () => {
         </ProtectedRoute>
       }>
         <Route path="dashboard" element={<EmployeeDashboard />} />
-        <Route path="compass" element={<CareerCompass />} />
+        
         <Route path="recommendations" element={<Recommendations />} />
-        <Route path="simulator" element={<InternalJobs />} /> {/* Updated route */}
+        <Route path="internal-jobs" element={<InternalJobs />} />
         <Route path="notifications" element={<div className="p-8 text-center glass-card"><h2 className="text-2xl font-bold text-gradient-primary">Notifications</h2><p className="text-foreground-secondary mt-2">Coming soon - Real-time updates and alerts</p></div>} />
         <Route path="profile" element={<Profile />} />
         
@@ -92,6 +92,7 @@ const AppRouter: React.FC = () => {
         <Route path="analytics" element={<Analytics />} />
         <Route path="approvals" element={<Approvals />} />
         <Route path="settings" element={<Settings />} />
+        <Route path="profile" element={<Profile />} />
       </Route>
 
       {/* Error Routes */}
