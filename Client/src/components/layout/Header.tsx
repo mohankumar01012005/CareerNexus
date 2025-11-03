@@ -16,8 +16,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "../../components/ui/dropdown-menu"
-import { Bell, Settings, User, LogOut, Menu, FileText } from "lucide-react"
+import { Bell, User, LogOut, Menu, FileText } from "lucide-react"
 import { API_CONFIG } from "../../config/api"
+import { useNavigate } from "react-router-dom"
 
 interface HeaderProps {
   title: string
@@ -35,10 +36,16 @@ const Header: React.FC<HeaderProps> = ({ title, subtitle, onMenuClick }) => {
   const [notificationCount] = useState(3) // Mock notification count
   const [resumeLink, setResumeLink] = useState<string>("")
   const [isLoadingResume, setIsLoadingResume] = useState<boolean>(false)
+  const navigate = useNavigate()
 
-  // Fetch resume link on component mount
+  // Fetch resume link on component mount - only for employees
   useEffect(() => {
     const fetchResumeLink = async () => {
+      // Only fetch resume link for employees, not HR
+      if (userType !== "employee") {
+        return
+      }
+
       try {
         setIsLoadingResume(true)
 
@@ -82,7 +89,7 @@ const Header: React.FC<HeaderProps> = ({ title, subtitle, onMenuClick }) => {
     }
 
     fetchResumeLink()
-  }, [])
+  }, [userType])
 
   const getInitials = (name: string) => {
     return name
@@ -97,6 +104,14 @@ const Header: React.FC<HeaderProps> = ({ title, subtitle, onMenuClick }) => {
       window.open(resumeLink, "_blank", "noopener,noreferrer")
     } else {
       console.error("No resume link available")
+    }
+  }
+
+  const handleProfileClick = () => {
+    if (userType === "hr") {
+      navigate("/hr/settings")
+    } else {
+      navigate("/employee/profile")
     }
   }
 
@@ -120,17 +135,19 @@ const Header: React.FC<HeaderProps> = ({ title, subtitle, onMenuClick }) => {
 
       {/* Right Section */}
       <div className="flex items-center space-x-4 relative z-10">
-        {/* My Resume Button */}
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={handleResumeClick}
-          disabled={!resumeLink || isLoadingResume}
-          className="glass-card border-glass-border hover:bg-primary/10 hover:border-primary/50 transition-all duration-300 bg-transparent"
-        >
-          <FileText className="w-4 h-4 mr-2" />
-          {isLoadingResume ? "Loading..." : "My Resume"}
-        </Button>
+        {/* My Resume Button - Only show for employees */}
+        {userType === "employee" && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleResumeClick}
+            disabled={!resumeLink || isLoadingResume}
+            className="glass-card border-glass-border hover:bg-primary/10 hover:border-primary/50 transition-all duration-300 bg-transparent"
+          >
+            <FileText className="w-4 h-4 mr-2" />
+            {isLoadingResume ? "Loading..." : "My Resume"}
+          </Button>
+        )}
 
         {/* Notifications */}
         <Button variant="ghost" size="sm" className="relative hover:bg-primary/10">
@@ -168,13 +185,9 @@ const Header: React.FC<HeaderProps> = ({ title, subtitle, onMenuClick }) => {
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator className="bg-glass-border/30" />
-       <DropdownMenuItem className="hover:bg-primary/10" onClick={() => window.location.href = '/employee/profile'}>
-  <User className="mr-2 h-4 w-4" />
-  <span>Profile</span>
-</DropdownMenuItem>
-            <DropdownMenuItem className="hover:bg-primary/10">
-              <Settings className="mr-2 h-4 w-4" />
-              <span>Settings</span>
+            <DropdownMenuItem className="hover:bg-primary/10" onClick={handleProfileClick}>
+              <User className="mr-2 h-4 w-4" />
+              <span>Profile</span>
             </DropdownMenuItem>
             <DropdownMenuSeparator className="bg-glass-border/30" />
             <DropdownMenuItem
