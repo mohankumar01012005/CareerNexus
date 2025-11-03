@@ -31,9 +31,9 @@ const Sidebar: React.FC = () => {
   // Navigation items for employees
   const employeeNavItems = [
     { icon: Home, label: 'Dashboard', path: '/employee/dashboard' },
-    { icon: Compass, label: 'Career Compass', path: '/employee/compass' },
+    
     { icon: BookOpen, label: 'Recommendations', path: '/employee/recommendations' },
-    { icon: Target, label: 'Simulator', path: '/employee/simulator' },
+    { icon: Target, label: 'Internal Jobs', path: '/employee/Internal Jobs' },
     { icon: Bell, label: 'Notifications', path: '/employee/notifications' },
     { icon: Settings, label: 'Profile', path: '/employee/profile' },
   ];
